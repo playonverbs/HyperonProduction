@@ -1,0 +1,13 @@
+BEGIN_PROLOG
+
+analyzeEvents:
+{
+    module_type:     "HyperonProduction"
+
+    PFParticleLabel: "pandora"
+    ShowerLabel:     "pandora"
+    SliceLabel:      "pandora"
+    TrackLabel:      "pandora"
+}
+
+END_PROLOG

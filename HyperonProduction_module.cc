@@ -24,6 +24,13 @@
 #include "nusimdata/SimulationBase/MCNeutrino.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 
+#include "lardataobj/RecoBase/PFParticle.h"
+#include "lardataobj/RecoBase/Shower.h"
+#include "lardataobj/RecoBase/Slice.h"
+#include "lardataobj/RecoBase/Track.h"
+
+#include "ubana/HyperonProduction/Utils.h"
+
 #include "TLorentzVector.h"
 #include "TTree.h"
 #include "TVector3.h"
@@ -31,7 +38,7 @@
 #include <string>
 #include <vector>
 
-#define FNLOG(msg)	std::cout << "[" << __PRETTY_FUNCTION__ << "] " << msg << std::endl;
+#define FNLOG(msg)	std::cout << "[" << __PRETTY_FUNCTION__ << "] " << msg << std::endl
 
 namespace hyperon {
 	class HyperonProduction;
@@ -60,29 +67,17 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 		// Declare member data here.
 
-		TParticlePDG *proton = TDatabasePDG::Instance()->GetParticle(2212);
-		TParticlePDG *muon   = TDatabasePDG::Instance()->GetParticle(13);
-		TParticlePDG *pion   = TDatabasePDG::Instance()->GetParticle(211);
-		TParticlePDG *photon = TDatabasePDG::Instance()->GetParticle(22);
+		unsigned int fNPFParticles;
+		unsigned int fNPrimaryChildren;
 
 		// FHICL Params
-		std::string f_pfpProducer;
-		std::string f_trackProducer;
-		std::string f_showerProducer;
-		std::string f_vertexProducer;
-		std::string f_pidProducer;
-		std::string f_hitProducer;
-		std::string f_hitTruthAssnProducer;
-		std::string f_trackHitAssnProducer;
-		std::string f_showerHitAssnProducer;
-		std::string f_metadataProducer;
-		std::string f_generatorProducer;
-		std::string f_g4Producer;
+		std::string fSliceLabel;
+		std::string fPFParticleLabel;
+		std::string fTrackLabel;
+		std::string fShowerLabel;
 
-		std::string f_recoProducer;
-
-		bool f_isData;
-		bool f_debug = false;
+		bool fIsData;
+		bool fDebug = false;
 
 		// output tree values here:
 
@@ -143,13 +138,16 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<int>    _trk_true_origin;
 		std::vector<double> _trk_true_purity;
 
-		TTree* f_tree;
-
+		TTree* fTree;
 };
 
 
 hyperon::HyperonProduction::HyperonProduction(fhicl::ParameterSet const& p)
-	: EDAnalyzer{p}  // ,
+	: EDAnalyzer{p},
+	fSliceLabel(p.get<std::string>("SliceLabel")),
+	fPFParticleLabel(p.get<std::string>("PFParticleLabel")),
+	fTrackLabel(p.get<std::string>("TrackLabel")),
+	fShowerLabel(p.get<std::string>("ShowerLabel"))
 	// More initializers here.
 {
 	// Call appropriate consumes<>() for any products to be retrieved by this module.
@@ -158,6 +156,12 @@ hyperon::HyperonProduction::HyperonProduction(fhicl::ParameterSet const& p)
 void hyperon::HyperonProduction::analyze(art::Event const& e)
 {
 	// Implementation of required member function here.
+
+	_trk_length.clear();
+	_shr_length.clear();
+	
+	_n_primary_tracks  = 0;
+	_n_primary_showers = 0;
 
 	_run    = e.run();
 	_subrun = e.subRun();
@@ -169,28 +173,115 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	/* if (!e.getByLabel(f_generatorProducer, )) */
 
 	art::ValidHandle<std::vector<recob::Slice>> sliceHandle =
-		e.getValidHandle<std::vector<recob::Slice>>(f_recoProducer);
+		e.getValidHandle<std::vector<recob::Slice>>(fSliceLabel);
 	std::vector<art::Ptr<recob::Slice>> sliceVector;
 
 	if (sliceHandle.isValid())
 		art::fill_ptr_vector(sliceVector, sliceHandle);
 
-	f_tree->Fill();
+	art::FindManyP<recob::PFParticle> slicePFPAssoc(sliceHandle, e, fSliceLabel);
+
+	int nuID = -1;
+	int nuSliceKey = -1;
+
+	// iterate through all collected Slice objects.
+	for (const art::Ptr<recob::Slice> &slice : sliceVector)
+	{
+		// collect all PFPs associated with the current slice key
+		std::vector<art::Ptr<recob::PFParticle>> slicePFPs(slicePFPAssoc.at(slice.key()));
+
+		for (const art::Ptr<recob::PFParticle> &slicePFP : slicePFPs)
+		{
+			const bool isPrimary(slicePFP->IsPrimary());
+			const bool isNeutrino(std::abs(slicePFP->PdgCode()) == 12 || std::abs(slicePFP->PdgCode()) == 14);
+
+			if (!(isPrimary && isNeutrino))
+				continue;
+
+			nuSliceKey = slice.key();
+			nuID = slicePFP->Self();
+			fNPFParticles = slicePFPs.size();
+			fNPrimaryChildren = slicePFP->NumDaughters();
+
+			break;
+		}
+
+		// this assumes only one neutrino hierarchy among all slice.
+		if (nuID >= 0)
+			break;
+	}
+
+	if (nuSliceKey < 0)
+	{
+		if (fDebug)
+			FNLOG("no nuSliceKey found");
+		// TODO handle failure case properly
+		return;
+	}
+
+	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
+		e.getValidHandle<std::vector<recob::PFParticle>>(fPFParticleLabel);
+	art::FindManyP<recob::Track>  pfpTrackAssoc(pfpHandle, e, fTrackLabel);
+	art::FindManyP<recob::Shower> pfpShowerAssoc(pfpHandle, e, fShowerLabel);
+
+	std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
+
+	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
+	{
+		if (nuSlicePFP->Parent() != static_cast<long unsigned int>(nuID))
+			continue;
+
+		// Handle Tracks
+
+		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
+
+		if (tracks.size() != 1)
+			continue;
+
+		_n_primary_tracks++;
+		art::Ptr<recob::Track> track = tracks.at(0);
+		_trk_length.push_back(track->Length());
+
+		// Handle Showers
+
+		std::vector<art::Ptr<recob::Shower>> showers = pfpShowerAssoc.at(nuSlicePFP.key());
+
+		if (showers.size() != 1)
+			continue;
+
+		_n_primary_showers++;
+		art::Ptr<recob::Shower> shower = showers.at(0);
+		
+		if (shower->has_length()) {
+			_shr_length.push_back(shower->Length());
+		} else {
+			_shr_length.push_back(-1.0);
+		}
+	}
+
+	fTree->Fill();
 }
 
 void hyperon::HyperonProduction::beginJob()
 {
 	art::ServiceHandle<art::TFileService> tfs;
-	f_tree = tfs->make<TTree>("tree", "Output TTree");
+	fTree = tfs->make<TTree>("tree", "Output TTree");
 
-	f_tree->Branch("run",    &_run);
-	f_tree->Branch("subrun", &_subrun);
-	f_tree->Branch("event",  &_event);
+	fTree->Branch("run",    &_run);
+	fTree->Branch("subrun", &_subrun);
+	fTree->Branch("event",  &_event);
+	fTree->Branch("n_primary_tracks",  &_n_primary_tracks);
+	fTree->Branch("trk_length", &_trk_length);
+
+	fTree->Branch("n_primary_showers", &_n_primary_showers);
+	fTree->Branch("shr_length", &_shr_length);
 }
 
 void hyperon::HyperonProduction::endJob()
 {
-
+	if (fDebug)
+		FNLOG("ending job");
+	return;
 }
 
-DEFINE_ART_MODULE(HyperonProduction)
+DEFINE_ART_MODULE(hyperon::HyperonProduction)
