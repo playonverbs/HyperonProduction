@@ -93,6 +93,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		void endJob() override;
 
 	private:
+		void clearTreeVariables();
 		void fillNull();
 
 		// Declare member data here.
@@ -313,10 +314,7 @@ void hyperon::HyperonProduction::endJob()
 	return;
 }
 
-// fillNull is fills the output ttree with null(ish) values when accessing data
-// products fails.
-// TODO: define and set NULL values for failure modes accessing slice, track, etc..
-void hyperon::HyperonProduction::fillNull()
+void hyperon::HyperonProduction::clearTreeVariables()
 {
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
@@ -369,6 +367,14 @@ void hyperon::HyperonProduction::fillNull()
 	_trk_true_length.clear();
 	_trk_true_origin.clear();
 	_trk_true_purity.clear();
+}
+
+// fillNull is fills the output ttree with null(ish) values when accessing data
+// products fails.
+// TODO: define and set NULL values for failure modes accessing slice, track, etc..
+void hyperon::HyperonProduction::fillNull()
+{
+	clearTreeVariables();
 
 	fTree->Fill();
 }
