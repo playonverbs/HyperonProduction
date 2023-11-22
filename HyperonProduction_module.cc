@@ -65,6 +65,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 	private:
 
+		void fillNull();
+
 		// Declare member data here.
 
 		unsigned int fNPFParticles;
@@ -215,7 +217,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	{
 		if (fDebug)
 			FNLOG("no nuSliceKey found");
-		// TODO handle failure case properly
+		fillNull();
 		return;
 	}
 
@@ -232,7 +234,6 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 			continue;
 
 		// Handle Tracks
-
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
 
 		if (tracks.size() != 1)
@@ -282,6 +283,66 @@ void hyperon::HyperonProduction::endJob()
 	if (fDebug)
 		FNLOG("ending job");
 	return;
+}
+
+// fillNull is fills the output ttree with null(ish) values when accessing data
+// products fails.
+// TODO: define and set NULL values for failure modes accessing slice, track, etc..
+void hyperon::HyperonProduction::fillNull()
+{
+	_n_primary_tracks  = 0;
+	_n_primary_showers = 0;
+
+	_pdg.clear();
+	_trk_shr_score.clear();
+	_x.clear();
+	_y.clear();
+	_z.clear();
+	_displacement.clear();
+
+	_trk_length.clear();
+	_trk_dir_x.clear();
+	_trk_dir_y.clear();
+	_trk_dir_z.clear();
+	_trk_start_x.clear();
+	_trk_start_y.clear();
+	_trk_start_z.clear();
+	_trk_end_x.clear();
+	_trk_end_y.clear();
+	_trk_end_z.clear();
+	_trk_mean_dedx_plane0.clear();
+	_trk_mean_dedx_plane1.clear();
+	_trk_mean_dedx_plane2.clear();
+	_trk_llrpid.clear();
+
+	_shr_length.clear();
+	_shr_dir_x.clear();
+	_shr_dir_y.clear();
+	_shr_dir_z.clear();
+	_shr_start_x.clear();
+	_shr_start_y.clear();
+	_shr_start_z.clear();
+	_shr_energy_plane0.clear();
+	_shr_energy_plane1.clear();
+	_shr_energy_plane2.clear();
+	_shr_dedx_plane0.clear();
+	_shr_dedx_plane1.clear();
+	_shr_dedx_plane2.clear();
+	_shr_open_angle.clear();
+
+	_has_truth.clear();
+	_mc_truth_index.clear();
+	_trk_true_pdg.clear();
+	_trk_true_energy.clear();
+	_trk_true_ke.clear();
+	_trk_true_px.clear();
+	_trk_true_py.clear();
+	_trk_true_pz.clear();
+	_trk_true_length.clear();
+	_trk_true_origin.clear();
+	_trk_true_purity.clear();
+
+	fTree->Fill();
 }
 
 DEFINE_ART_MODULE(hyperon::HyperonProduction)
