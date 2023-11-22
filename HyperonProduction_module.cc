@@ -42,11 +42,40 @@
 
 namespace hyperon {
 	class HyperonProduction;
+
+	struct Config;
 }
 
+// Config is an art-compatible container for fhicl parameters: this allows for
+// parameter validation and descriptions.
+struct hyperon::Config {
+	using Name    = fhicl::Name;
+	using Comment = fhicl::Comment;
+
+	template<typename T>
+	using Atom = fhicl::Atom<T>;
+
+	template<typename T, std::size_t SZ>
+	using Sequence = fhicl::Sequence<T, SZ>;
+
+	Atom<std::string> fSliceLabel      { Name("SliceLabel"),
+										 Comment("Label for recob::Slice") };
+	Atom<std::string> fPFParticleLabel { Name("PFParticleLabel"),
+   										 Comment("Label for recob::PFParticle") };
+	Atom<std::string> fTrackLabel      { Name("TrackLabel"),
+										 Comment("Label for recob::Track") };
+	Atom<std::string> fShowerLabel     { Name("ShowerLabel"),
+										 Comment("Label for recob::Shower") };
+	Atom<bool>        fIsData          { Name("IsData"),
+										 Comment("Flag to indicate if the input is Data") };
+};
+
 class hyperon::HyperonProduction : public art::EDAnalyzer {
+
 	public:
-		explicit HyperonProduction(fhicl::ParameterSet const& p);
+		using Parameters = art::EDAnalyzer::Table<Config>;
+
+		explicit HyperonProduction(Parameters const& config);
 		// The compiler-generated destructor is fine for non-base
 		// classes without bare pointers or other resource use.
 
@@ -64,7 +93,6 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		void endJob() override;
 
 	private:
-
 		void fillNull();
 
 		// Declare member data here.
@@ -144,13 +172,13 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 };
 
 
-hyperon::HyperonProduction::HyperonProduction(fhicl::ParameterSet const& p)
-	: EDAnalyzer{p},
-	fSliceLabel(p.get<std::string>("SliceLabel")),
-	fPFParticleLabel(p.get<std::string>("PFParticleLabel")),
-	fTrackLabel(p.get<std::string>("TrackLabel")),
-	fShowerLabel(p.get<std::string>("ShowerLabel"))
-	// More initializers here.
+hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
+	: EDAnalyzer{config},
+	fSliceLabel(config().fSliceLabel()),
+	fPFParticleLabel(config().fPFParticleLabel()),
+	fTrackLabel(config().fTrackLabel()),
+	fShowerLabel(config().fShowerLabel()),
+	fIsData(config().fIsData())
 {
 	// Call appropriate consumes<>() for any products to be retrieved by this module.
 }
