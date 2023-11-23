@@ -66,10 +66,12 @@ struct hyperon::Config {
 										 Comment("Label for recob::Track") };
 	Atom<std::string> fShowerLabel     { Name("ShowerLabel"),
 										 Comment("Label for recob::Shower") };
+	Atom<std::string> fCaloLabel       { Name("CaloLabel"),
+										 Comment("Label for anab::Calorimetry") };
 	Atom<bool>        fIsData          { Name("IsData"),
 										 Comment("Flag to indicate if the input is Data") };
 	Atom<bool>        fDebug           { Name("Debug"),
-										 Comment("Flag to enabe debug messages"),
+										 Comment("Flag to enable debug messages"),
 										 false };
 };
 
@@ -109,6 +111,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string fPFParticleLabel;
 		std::string fTrackLabel;
 		std::string fShowerLabel;
+		std::string fCaloLabel;
 		bool fIsData;
 		bool fDebug;
 
@@ -181,6 +184,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fPFParticleLabel(config().fPFParticleLabel()),
 	fTrackLabel(config().fTrackLabel()),
 	fShowerLabel(config().fShowerLabel()),
+	fCaloLabel(config().fCaloLabel()),
 	fIsData(config().fIsData()),
 	fDebug(config().fDebug())
 {
