@@ -190,12 +190,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 void hyperon::HyperonProduction::analyze(art::Event const& e)
 {
 	// Implementation of required member function here.
-
-	_trk_length.clear();
-	_shr_length.clear();
-	
-	_n_primary_tracks  = 0;
-	_n_primary_showers = 0;
+	clearTreeVariables();
 
 	_run    = e.run();
 	_subrun = e.subRun();
