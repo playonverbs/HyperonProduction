@@ -68,6 +68,9 @@ struct hyperon::Config {
 										 Comment("Label for recob::Shower") };
 	Atom<bool>        fIsData          { Name("IsData"),
 										 Comment("Flag to indicate if the input is Data") };
+	Atom<bool>        fDebug           { Name("Debug"),
+										 Comment("Flag to enabe debug messages"),
+										 false };
 };
 
 class hyperon::HyperonProduction : public art::EDAnalyzer {
@@ -106,9 +109,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string fPFParticleLabel;
 		std::string fTrackLabel;
 		std::string fShowerLabel;
-
 		bool fIsData;
-		bool fDebug = false;
+		bool fDebug;
 
 		// output tree values here:
 
@@ -179,7 +181,8 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fPFParticleLabel(config().fPFParticleLabel()),
 	fTrackLabel(config().fTrackLabel()),
 	fShowerLabel(config().fShowerLabel()),
-	fIsData(config().fIsData())
+	fIsData(config().fIsData()),
+	fDebug(config().fDebug())
 {
 	// Call appropriate consumes<>() for any products to be retrieved by this module.
 }

@@ -8,6 +8,8 @@ analyzeEvents:
     ShowerLabel:     "pandora"
     SliceLabel:      "pandora"
     TrackLabel:      "pandora"
+
+    Debug:           false
 }
 
 END_PROLOG
