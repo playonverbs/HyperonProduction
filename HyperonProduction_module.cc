@@ -260,6 +260,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		if (nuSlicePFP->Parent() != static_cast<long unsigned int>(nuID))
 			continue;
 
+		_pdg.push_back(nuSlicePFP->PdgCode());
+
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
 
@@ -269,6 +271,9 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		_n_primary_tracks++;
 		art::Ptr<recob::Track> track = tracks.at(0);
 		_trk_length.push_back(track->Length());
+		_trk_start_x.push_back(track->Start().X());
+		_trk_start_y.push_back(track->Start().Y());
+		_trk_start_z.push_back(track->Start().Z());
 
 		// Handle Showers
 
@@ -285,6 +290,9 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		} else {
 			_shr_length.push_back(-1.0);
 		}
+		_shr_start_x.push_back(shower->ShowerStart().X());
+		_shr_start_y.push_back(shower->ShowerStart().Y());
+		_shr_start_z.push_back(shower->ShowerStart().Z());
 	}
 
 	fTree->Fill();
@@ -298,11 +306,20 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("run",    &_run);
 	fTree->Branch("subrun", &_subrun);
 	fTree->Branch("event",  &_event);
-	fTree->Branch("n_primary_tracks",  &_n_primary_tracks);
-	fTree->Branch("trk_length", &_trk_length);
+
+	fTree->Branch("pdg",  &_pdg);
+
+	fTree->Branch("n_primary_tracks", &_n_primary_tracks);
+	fTree->Branch("trk_length",       &_trk_length);
+	fTree->Branch("trk_start_x",      &_trk_start_x);
+	fTree->Branch("trk_start_y",      &_trk_start_y);
+	fTree->Branch("trk_start_z",      &_trk_start_z);
 
 	fTree->Branch("n_primary_showers", &_n_primary_showers);
-	fTree->Branch("shr_length", &_shr_length);
+	fTree->Branch("shr_length",        &_shr_length);
+	fTree->Branch("shr_start_x",       &_shr_start_x);
+	fTree->Branch("shr_start_y",       &_shr_start_y);
+	fTree->Branch("shr_start_z",       &_shr_start_z);
 }
 
 void hyperon::HyperonProduction::endJob()
