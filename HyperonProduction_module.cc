@@ -274,6 +274,12 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		_trk_start_x.push_back(track->Start().X());
 		_trk_start_y.push_back(track->Start().Y());
 		_trk_start_z.push_back(track->Start().Z());
+		_trk_end_x.push_back(track->End().X());
+		_trk_end_y.push_back(track->End().Y());
+		_trk_end_z.push_back(track->End().Z());
+		_trk_dir_x.push_back(track->StartDirection().X());
+		_trk_dir_y.push_back(track->StartDirection().Y());
+		_trk_dir_z.push_back(track->StartDirection().Z());
 
 		// Handle Showers
 
@@ -314,6 +320,12 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("trk_start_x",      &_trk_start_x);
 	fTree->Branch("trk_start_y",      &_trk_start_y);
 	fTree->Branch("trk_start_z",      &_trk_start_z);
+	fTree->Branch("trk_end_x",        &_trk_end_x);
+	fTree->Branch("trk_end_y",        &_trk_end_y);
+	fTree->Branch("trk_end_z",        &_trk_end_z);
+	fTree->Branch("trk_dir_x",        &_trk_dir_x);
+	fTree->Branch("trk_dir_y",        &_trk_dir_y);
+	fTree->Branch("trk_dir_z",        &_trk_dir_z);
 
 	fTree->Branch("n_primary_showers", &_n_primary_showers);
 	fTree->Branch("shr_length",        &_shr_length);
