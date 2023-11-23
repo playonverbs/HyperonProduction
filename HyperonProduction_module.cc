@@ -44,6 +44,12 @@ namespace hyperon {
 	class HyperonProduction;
 
 	struct Config;
+
+	// define some default error values;
+	namespace def {
+		constexpr double LENGTH = -999.0;
+		constexpr double POS    = -999.9;
+	}
 }
 
 // Config is an art-compatible container for fhicl parameters: this allows for
@@ -274,6 +280,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 
 		_n_primary_tracks++;
 		art::Ptr<recob::Track> track = tracks.at(0);
+
 		_trk_length.push_back(track->Length());
 		_trk_start_x.push_back(track->Start().X());
 		_trk_start_y.push_back(track->Start().Y());
@@ -295,14 +302,10 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		_n_primary_showers++;
 		art::Ptr<recob::Shower> shower = showers.at(0);
 		
-		if (shower->has_length()) {
-			_shr_length.push_back(shower->Length());
-		} else {
-			_shr_length.push_back(-1.0);
-		}
-		_shr_start_x.push_back(shower->ShowerStart().X());
-		_shr_start_y.push_back(shower->ShowerStart().Y());
-		_shr_start_z.push_back(shower->ShowerStart().Z());
+		_shr_length.push_back(def::POS);
+		_shr_start_x.push_back(def::POS);
+		_shr_start_y.push_back(def::POS);
+		_shr_start_z.push_back(def::POS);
 	}
 
 	fTree->Fill();
