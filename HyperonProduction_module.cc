@@ -311,7 +311,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 void hyperon::HyperonProduction::beginJob()
 {
 	art::ServiceHandle<art::TFileService> tfs;
-	fTree = tfs->make<TTree>("tree", "Output TTree");
+	fTree = tfs->make<TTree>("OutputTree", "Output TTree");
 
 	fTree->Branch("run",    &_run);
 	fTree->Branch("subrun", &_subrun);
