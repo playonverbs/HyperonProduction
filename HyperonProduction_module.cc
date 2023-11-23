@@ -329,6 +329,7 @@ void hyperon::HyperonProduction::endJob()
 	return;
 }
 
+// TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::clearTreeVariables()
 {
 	_n_primary_tracks  = 0;
@@ -386,7 +387,6 @@ void hyperon::HyperonProduction::clearTreeVariables()
 
 // fillNull is fills the output ttree with null(ish) values when accessing data
 // products fails.
-// TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::fillNull()
 {
 	clearTreeVariables();
