@@ -129,6 +129,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		unsigned int _subrun;
 		unsigned int _event;
 
+		unsigned int _n_slices;
 		unsigned int _n_primary_tracks;
 		unsigned int _n_primary_showers;
 
@@ -224,6 +225,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	int nuID = -1;
 	int nuSliceKey = -1;
 
+	_n_slices = sliceVector.size();
+
 	// iterate through all collected Slice objects.
 	for (const art::Ptr<recob::Slice> &slice : sliceVector)
 	{
@@ -311,6 +314,7 @@ void hyperon::HyperonProduction::beginJob()
 
 	fTree->Branch("pdg",  &_pdg);
 
+	fTree->Branch("n_slices",         &_n_slices);
 	fTree->Branch("n_primary_tracks", &_n_primary_tracks);
 	fTree->Branch("trk_length",       &_trk_length);
 	fTree->Branch("trk_start_x",      &_trk_start_x);
@@ -370,6 +374,7 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::clearTreeVariables()
 {
+	_n_slices          = 0;
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
 
