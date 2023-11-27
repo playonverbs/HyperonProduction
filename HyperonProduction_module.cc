@@ -104,6 +104,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		void endJob() override;
 
 	private:
+		void getTrackVariables(art::Ptr<recob::Track> &track);
 		void clearTreeVariables();
 		void fillNull();
 
@@ -281,16 +282,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		_n_primary_tracks++;
 		art::Ptr<recob::Track> track = tracks.at(0);
 
-		_trk_length.push_back(track->Length());
-		_trk_start_x.push_back(track->Start().X());
-		_trk_start_y.push_back(track->Start().Y());
-		_trk_start_z.push_back(track->Start().Z());
-		_trk_end_x.push_back(track->End().X());
-		_trk_end_y.push_back(track->End().Y());
-		_trk_end_z.push_back(track->End().Z());
-		_trk_dir_x.push_back(track->StartDirection().X());
-		_trk_dir_y.push_back(track->StartDirection().Y());
-		_trk_dir_z.push_back(track->StartDirection().Z());
+		getTrackVariables(track);
 
 		// Handle Showers
 
@@ -346,6 +338,20 @@ void hyperon::HyperonProduction::endJob()
 	if (fDebug)
 		FNLOG("ending job");
 	return;
+}
+
+void hyperon::HyperonProduction::getTrackVariables(art::Ptr<recob::Track> &track)
+{
+	_trk_length.push_back(track->Length());
+	_trk_start_x.push_back(track->Start().X());
+	_trk_start_y.push_back(track->Start().Y());
+	_trk_start_z.push_back(track->Start().Z());
+	_trk_end_x.push_back(track->End().X());
+	_trk_end_y.push_back(track->End().Y());
+	_trk_end_z.push_back(track->End().Z());
+	_trk_dir_x.push_back(track->StartDirection().X());
+	_trk_dir_y.push_back(track->StartDirection().Y());
+	_trk_dir_z.push_back(track->StartDirection().Z());
 }
 
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
