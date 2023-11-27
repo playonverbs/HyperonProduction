@@ -137,7 +137,6 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<double> _x;
 		std::vector<double> _y;
 		std::vector<double> _z;
-		std::vector<double> _displacement;
 
 		std::vector<double> _trk_length;
 		std::vector<double> _trk_dir_x;
@@ -365,7 +364,6 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_x.clear();
 	_y.clear();
 	_z.clear();
-	_displacement.clear();
 
 	_trk_length.clear();
 	_trk_dir_x.clear();
