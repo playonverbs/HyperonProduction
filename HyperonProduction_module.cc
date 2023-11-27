@@ -74,6 +74,10 @@ struct hyperon::Config {
 										 Comment("Label for recob::Shower") };
 	Atom<std::string> fCaloLabel       { Name("CaloLabel"),
 										 Comment("Label for anab::Calorimetry") };
+	Atom<std::string> fGeneratorLabel  { Name("GeneratorLabel"),
+										 Comment("Label for simb::MCTruth") };
+	Atom<std::string> fG4Label  	   { Name("G4Label"),
+										 Comment("Label for simb::MCParticle") };
 	Atom<bool>        fIsData          { Name("IsData"),
 										 Comment("Flag to indicate if the input is Data") };
 	Atom<bool>        fDebug           { Name("Debug"),
@@ -120,6 +124,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string fTrackLabel;
 		std::string fShowerLabel;
 		std::string fCaloLabel;
+		std::string fGeneratorLabel;
+		std::string fG4Label;
 		bool fIsData;
 		bool fDebug;
 
@@ -128,6 +134,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		unsigned int _run;
 		unsigned int _subrun;
 		unsigned int _event;
+
+		double _mc_nu_q2;
 
 		unsigned int _n_slices;
 		unsigned int _n_primary_tracks;
@@ -193,6 +201,8 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fTrackLabel(config().fTrackLabel()),
 	fShowerLabel(config().fShowerLabel()),
 	fCaloLabel(config().fCaloLabel()),
+	fGeneratorLabel(config().fGeneratorLabel()),
+	fG4Label(config().fG4Label()),
 	fIsData(config().fIsData()),
 	fDebug(config().fDebug())
 {
@@ -208,10 +218,24 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	_subrun = e.subRun();
 	_event  = e.id().event();
 
-	/* art::ValidHandle<std::vector<simb::MCTruth>> mctruthListHandle; */
-	/* std::vector<art::Ptr<simb::MCTruth>>    mcTrVect; */
+	// Check if this is an MC file.
+	if (!fIsData) {
+		art::ValidHandle<std::vector<simb::MCTruth>> mcTruthHandle =
+			e.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorLabel);
+		std::vector<art::Ptr<simb::MCTruth>> mcTruthVector;
 
-	/* if (!e.getByLabel(f_generatorProducer, )) */
+		if (mcTruthHandle.isValid())
+			art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
+
+		// Fill truth information
+		
+		for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
+		{
+			_mc_nu_q2 = truth->GetNeutrino().QSqr();
+
+			break; // escape after first MCNeutrino
+		}
+	}
 
 	art::ValidHandle<std::vector<recob::Slice>> sliceHandle =
 		e.getValidHandle<std::vector<recob::Slice>>(fSliceLabel);
@@ -312,6 +336,8 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("subrun", &_subrun);
 	fTree->Branch("event",  &_event);
 
+	fTree->Branch("mc_nu_q2", &_mc_nu_q2);
+
 	fTree->Branch("pdg",  &_pdg);
 
 	fTree->Branch("n_slices",         &_n_slices);
@@ -377,6 +403,8 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_n_slices          = 0;
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
+
+	_mc_nu_q2 = 0.0;
 
 	_pdg.clear();
 	_trk_shr_score.clear();

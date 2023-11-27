@@ -9,6 +9,8 @@ analyzeEvents:
     SliceLabel:      "pandora"
     TrackLabel:      "pandora"
     CaloLabel:       "pandoracaliSCE"
+    GeneratorLabel:  "generator"
+    G4Label:         "largeant"
 
     Debug:           false
 }
