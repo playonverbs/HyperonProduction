@@ -105,6 +105,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 	private:
 		void getTrackVariables(art::Ptr<recob::Track> &track);
+		void getShowerVariables(art::Ptr<recob::Shower> &shower);
 		void clearTreeVariables();
 		void fillNull();
 
@@ -293,10 +294,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		_n_primary_showers++;
 		art::Ptr<recob::Shower> shower = showers.at(0);
 		
-		_shr_length.push_back(def::POS);
-		_shr_start_x.push_back(def::POS);
-		_shr_start_y.push_back(def::POS);
-		_shr_start_z.push_back(def::POS);
+		getShowerVariables(shower);
 	}
 
 	fTree->Fill();
@@ -351,6 +349,22 @@ void hyperon::HyperonProduction::getTrackVariables(art::Ptr<recob::Track> &track
 	_trk_dir_x.push_back(track->StartDirection().X());
 	_trk_dir_y.push_back(track->StartDirection().Y());
 	_trk_dir_z.push_back(track->StartDirection().Z());
+}
+
+void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &shower)
+{	
+	if (shower->has_length())
+	{
+		_shr_length.push_back(shower->Length());
+	}
+	else
+	{
+		_shr_length.push_back(def::LENGTH);
+	}
+
+	_shr_start_x.push_back(shower->ShowerStart().X());
+	_shr_start_y.push_back(shower->ShowerStart().Y());
+	_shr_start_z.push_back(shower->ShowerStart().Z());
 }
 
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
