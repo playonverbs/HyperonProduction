@@ -46,7 +46,7 @@ namespace hyperon {
 	struct Config;
 
 	// define some default error values;
-	namespace def {
+	namespace bogus {
 		constexpr double LENGTH = -999.0;
 		constexpr double POS    = -999.9;
 	}
@@ -398,9 +398,10 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 	}
 	else
 	{
-		_shr_length.push_back(def::LENGTH);
+		_shr_length.push_back(bogus::LENGTH);
 	}
 
+	// TODO: apply SCE correction for start point.
 	_shr_start_x.push_back(shower->ShowerStart().X());
 	_shr_start_y.push_back(shower->ShowerStart().Y());
 	_shr_start_z.push_back(shower->ShowerStart().Z());
