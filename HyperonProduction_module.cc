@@ -25,6 +25,7 @@
 #include "nusimdata/SimulationBase/MCTruth.h"
 
 #include "lardataobj/RecoBase/PFParticle.h"
+#include "lardataobj/RecoBase/PFParticleMetadata.h"
 #include "lardataobj/RecoBase/Shower.h"
 #include "lardataobj/RecoBase/Slice.h"
 #include "lardataobj/RecoBase/Track.h"
@@ -146,12 +147,12 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 		// RecoParticle fields
 		std::vector<int>    _pdg;
-		std::vector<double> _trk_shr_score;
 		std::vector<double> _x;
 		std::vector<double> _y;
 		std::vector<double> _z;
 
 		std::vector<double> _trk_length;
+		std::vector<double> _trk_shr_score;
 		std::vector<double> _trk_dir_x;
 		std::vector<double> _trk_dir_y;
 		std::vector<double> _trk_dir_z;
@@ -296,6 +297,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		e.getValidHandle<std::vector<recob::PFParticle>>(fPFParticleLabel);
 	art::FindManyP<recob::Track>  pfpTrackAssoc(pfpHandle, e, fTrackLabel);
 	art::FindManyP<recob::Shower> pfpShowerAssoc(pfpHandle, e, fShowerLabel);
+	art::FindManyP<larpandoraobj::PFParticleMetadata>
+		pfpMetaAssoc(pfpHandle, e, fPFParticleLabel);
 
 	std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
 
@@ -306,6 +309,18 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 
 		_pdg.push_back(nuSlicePFP->PdgCode());
 
+		std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfpMetas =
+			pfpMetaAssoc.at(nuSlicePFP.key());
+
+		if (!pfpMetas.empty())
+		{
+			art::Ptr<larpandoraobj::PFParticleMetadata> pfpMeta = pfpMetas.at(0);
+
+			if (pfpMeta->GetPropertiesMap().find("TrackScore")
+					!= pfpMeta->GetPropertiesMap().end())
+				_trk_shr_score.push_back(pfpMeta->GetPropertiesMap().at("TrackScore"));
+		}
+		
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
 
@@ -351,6 +366,7 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("n_slices",         &_n_slices);
 	fTree->Branch("n_primary_tracks", &_n_primary_tracks);
 	fTree->Branch("trk_length",       &_trk_length);
+	fTree->Branch("trk_shr_score",    &_trk_shr_score);
 	fTree->Branch("trk_start_x",      &_trk_start_x);
 	fTree->Branch("trk_start_y",      &_trk_start_y);
 	fTree->Branch("trk_start_z",      &_trk_start_z);
@@ -420,12 +436,12 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_mc_mode   = "";
 
 	_pdg.clear();
-	_trk_shr_score.clear();
 	_x.clear();
 	_y.clear();
 	_z.clear();
 
 	_trk_length.clear();
+	_trk_shr_score.clear();
 	_trk_dir_x.clear();
 	_trk_dir_y.clear();
 	_trk_dir_z.clear();
