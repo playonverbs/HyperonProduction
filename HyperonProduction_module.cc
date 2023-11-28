@@ -50,6 +50,7 @@ namespace hyperon {
 	namespace bogus {
 		constexpr double LENGTH = -999.0;
 		constexpr double POS    = -999.9;
+		constexpr double ANGLE  = -999.0;
 	}
 }
 
@@ -379,9 +380,13 @@ void hyperon::HyperonProduction::beginJob()
 
 	fTree->Branch("n_primary_showers", &_n_primary_showers);
 	fTree->Branch("shr_length",        &_shr_length);
+	fTree->Branch("shr_open_angle",    &_shr_open_angle);
 	fTree->Branch("shr_start_x",       &_shr_start_x);
 	fTree->Branch("shr_start_y",       &_shr_start_y);
 	fTree->Branch("shr_start_z",       &_shr_start_z);
+	fTree->Branch("shr_dir_x",         &_shr_dir_x);
+	fTree->Branch("shr_dir_y",         &_shr_dir_y);
+	fTree->Branch("shr_dir_z",         &_shr_dir_z);
 }
 
 void hyperon::HyperonProduction::endJob()
@@ -417,10 +422,23 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 		_shr_length.push_back(bogus::LENGTH);
 	}
 
+	if (shower->has_open_angle())
+	{
+		_shr_open_angle.push_back(shower->OpenAngle());
+	}
+	else
+	{
+		_shr_open_angle.push_back(bogus::ANGLE);
+	}
+
 	// TODO: apply SCE correction for start point.
 	_shr_start_x.push_back(shower->ShowerStart().X());
 	_shr_start_y.push_back(shower->ShowerStart().Y());
 	_shr_start_z.push_back(shower->ShowerStart().Z());
+
+	_shr_dir_x.push_back(shower->Direction().X());
+	_shr_dir_y.push_back(shower->Direction().Y());
+	_shr_dir_z.push_back(shower->Direction().Z());
 }
 
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
