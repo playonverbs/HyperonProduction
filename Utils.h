@@ -19,13 +19,20 @@ namespace hyperon {
 			Other
 		};
 		
-		std::string GetCurrent(int ccnc) {
-			if (ccnc == 0)
-				return "CC";
+		// Convert the CCNC code from a neutrino generator to a string
+		std::string GetCCNC(int ccnc) {
+			switch (ccnc) {
+				case 0:  return "CC";
+				case 1:  return "NC";
+				default: return "None";
+			}
 			
-			return "NC";
+			return "None";
 		}
 
+		// Convert the Event Mode code from a neutrino generator to a string
+		// ranges 0 - 11 account for the GENIE event generator.
+		// 1095 accounts for the NuWro generator hyperon code.
 		std::string GetEventType(int mode) {
 			/* GenEventType type = static_cast<GenEventType>(mode); */
 
