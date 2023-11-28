@@ -135,10 +135,10 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		unsigned int _subrun;
 		unsigned int _event;
 
-		int    _mc_nu_pdg;
-		double _mc_nu_q2;
-		int    _mc_ccnc;
-		int    _mc_mode;
+		int         _mc_nu_pdg;
+		double      _mc_nu_q2;
+		std::string _mc_ccnc;
+		std::string _mc_mode;
 
 		unsigned int _n_slices;
 		unsigned int _n_primary_tracks;
@@ -236,8 +236,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		{
 			_mc_nu_pdg = truth->GetNeutrino().Nu().PdgCode();
 			_mc_nu_q2  = truth->GetNeutrino().QSqr();
-			_mc_ccnc   = truth->GetNeutrino().CCNC();
-			_mc_mode   = truth->GetNeutrino().Mode();
+			_mc_ccnc   = util::GetCCNC(truth->GetNeutrino().CCNC());
+			_mc_mode   = util::GetEventType(truth->GetNeutrino().Mode());
 
 			break; // escape after first MCNeutrino
 		}
@@ -416,8 +416,8 @@ void hyperon::HyperonProduction::clearTreeVariables()
 
 	_mc_nu_pdg = -999;
 	_mc_nu_q2  = -1.0;
-	_mc_ccnc   = -999;
-	_mc_mode   = -999;
+	_mc_ccnc   = "";
+	_mc_mode   = "";
 
 	_pdg.clear();
 	_trk_shr_score.clear();
