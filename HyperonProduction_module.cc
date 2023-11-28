@@ -309,25 +309,24 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
 
-		if (tracks.size() != 1)
-			continue;
+		if (tracks.size() == 1)
+		{
+			_n_primary_tracks++;
+			art::Ptr<recob::Track> track = tracks.at(0);
 
-		_n_primary_tracks++;
-		art::Ptr<recob::Track> track = tracks.at(0);
-
-		getTrackVariables(track);
-
+			getTrackVariables(track);
+		}
 		// Handle Showers
 
 		std::vector<art::Ptr<recob::Shower>> showers = pfpShowerAssoc.at(nuSlicePFP.key());
 
-		if (showers.size() != 1)
-			continue;
+		if (showers.size() == 1)
+		{
+			_n_primary_showers++;
+			art::Ptr<recob::Shower> shower = showers.at(0);
 
-		_n_primary_showers++;
-		art::Ptr<recob::Shower> shower = showers.at(0);
-		
-		getShowerVariables(shower);
+			getShowerVariables(shower);
+		}
 	}
 
 	fTree->Fill();
@@ -378,6 +377,7 @@ void hyperon::HyperonProduction::endJob()
 
 void hyperon::HyperonProduction::getTrackVariables(art::Ptr<recob::Track> &track)
 {
+	// TODO: apply SCE correction for points.
 	_trk_length.push_back(track->Length());
 	_trk_start_x.push_back(track->Start().X());
 	_trk_start_y.push_back(track->Start().Y());
