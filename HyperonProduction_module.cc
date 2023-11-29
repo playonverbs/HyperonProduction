@@ -51,6 +51,7 @@ namespace hyperon {
 		constexpr double LENGTH = -999.0;
 		constexpr double POS    = -999.9;
 		constexpr double ANGLE  = -999.0;
+		constexpr int PDG       = -999;
 	}
 }
 
@@ -137,8 +138,14 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		unsigned int _subrun;
 		unsigned int _event;
 
-		int         _mc_nu_pdg;
-		double      _mc_nu_q2;
+		int    _mc_nu_pdg;
+		double _mc_nu_pos_x;
+		double _mc_nu_pos_y;
+		double _mc_nu_pos_z;
+		double _mc_nu_q2;
+		int    _mc_lepton_pdg;
+		double _mc_lepton_mom;
+
 		std::string _mc_ccnc;
 		std::string _mc_mode;
 
@@ -236,10 +243,17 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		
 		for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
 		{
-			_mc_nu_pdg = truth->GetNeutrino().Nu().PdgCode();
-			_mc_nu_q2  = truth->GetNeutrino().QSqr();
-			_mc_ccnc   = util::GetCCNC(truth->GetNeutrino().CCNC());
-			_mc_mode   = util::GetEventType(truth->GetNeutrino().Mode());
+			_mc_nu_pdg   = truth->GetNeutrino().Nu().PdgCode();
+			_mc_nu_q2    = truth->GetNeutrino().QSqr();
+			_mc_nu_pos_x = truth->GetNeutrino().Nu().EndX();
+			_mc_nu_pos_y = truth->GetNeutrino().Nu().EndY();
+			_mc_nu_pos_z = truth->GetNeutrino().Nu().EndZ();
+
+			_mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
+			_mc_lepton_mom = truth->GetNeutrino().Lepton().Momentum().P();
+
+			_mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
+			_mc_mode = util::GetEventType(truth->GetNeutrino().Mode());
 
 			break; // escape after first MCNeutrino
 		}
@@ -332,8 +346,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 
 			getTrackVariables(track);
 		}
-		// Handle Showers
 
+		// Handle Showers
 		std::vector<art::Ptr<recob::Shower>> showers = pfpShowerAssoc.at(nuSlicePFP.key());
 
 		if (showers.size() == 1)
@@ -357,10 +371,15 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("subrun", &_subrun);
 	fTree->Branch("event",  &_event);
 
-	fTree->Branch("mc_nu_pdg", &_mc_nu_pdg);
-	fTree->Branch("mc_nu_q2",  &_mc_nu_q2);
-	fTree->Branch("mc_ccnc",   &_mc_ccnc);
-	fTree->Branch("mc_mode",   &_mc_mode);
+	fTree->Branch("mc_nu_pdg",     &_mc_nu_pdg);
+	fTree->Branch("mc_nu_q2",      &_mc_nu_q2);
+	fTree->Branch("mc_ccnc",       &_mc_ccnc);
+	fTree->Branch("mc_mode",       &_mc_mode);
+	fTree->Branch("mc_nu_pos_x",   &_mc_nu_pos_x);
+	fTree->Branch("mc_nu_pos_y",   &_mc_nu_pos_y);
+	fTree->Branch("mc_nu_pos_z",   &_mc_nu_pos_z);
+	fTree->Branch("mc_lepton_pdg", &_mc_lepton_pdg);
+	fTree->Branch("mc_lepton_mom", &_mc_lepton_mom);
 
 	fTree->Branch("pdg",  &_pdg);
 
@@ -448,8 +467,15 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
 
-	_mc_nu_pdg = -999;
-	_mc_nu_q2  = -1.0;
+	_mc_nu_pdg   = bogus::PDG;
+	_mc_nu_q2    = -1.0;
+	_mc_nu_pos_x = bogus::POS;
+	_mc_nu_pos_y = bogus::POS;
+	_mc_nu_pos_z = bogus::POS;
+
+	_mc_lepton_pdg = bogus::PDG;
+	_mc_lepton_mom = -1.0;
+
 	_mc_ccnc   = "";
 	_mc_mode   = "";
 
