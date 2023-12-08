@@ -1,5 +1,8 @@
 #pragma once
 
+#include "art/Framework/Principal/Event.h"
+#include "canvas/Persistency/Common/Ptr.h"
+
 #include <string>
 #include <vector>
 
@@ -50,6 +53,39 @@ namespace hyperon {
 			}
 
 			return "Other";
+		}
+
+		template <typename T>
+		std::vector<art::Ptr<T>> GetProductVector(const art::Event &e, const std::string &label)
+		{
+			auto productHandle = e.getValidHandle<std::vector<T>>(label);
+			bool success = productHandle.isValid();
+
+			if (!success)
+			{
+				return std::vector<art::Ptr<T>>();
+			}
+
+			std::vector<art::Ptr<T>> productVector;
+			art::fill_ptr_vector(productVector, productHandle);
+
+			return productVector;
+		}
+
+		template <typename T, typename U>
+		std::vector<art::Ptr<T>> GetAssocProductVector(const art::Ptr<U> &pProd, const art::Event &e, const std::string &label, const std::string &assocLabel)
+		{
+			auto productHandle = e.getValidHandle<std::vector<U>>(label);
+			bool success = productHandle.isValid();
+
+			if (!success)
+			{
+				return std::vector<art::Ptr<T>>();
+			}
+
+			const art::FindManyP<T> findParticleAssocs(productHandle, e, assocLabel);
+
+			return findParticleAssocs.at(pProd.key());
 		}
 	}
 }
