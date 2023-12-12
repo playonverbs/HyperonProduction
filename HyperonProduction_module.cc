@@ -24,6 +24,7 @@
 #include "nusimdata/SimulationBase/MCNeutrino.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 
+#include "lardataobj/AnalysisBase/Calorimetry.h"
 #include "lardataobj/RecoBase/PFParticle.h"
 #include "lardataobj/RecoBase/PFParticleMetadata.h"
 #include "lardataobj/RecoBase/Shower.h"
@@ -31,6 +32,7 @@
 #include "lardataobj/RecoBase/Track.h"
 
 #include "ubana/HyperonProduction/Utils.h"
+#include "ubana/HyperonProduction/Alg.h"
 
 #include "TLorentzVector.h"
 #include "TTree.h"
@@ -170,9 +172,11 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<double> _trk_end_x;
 		std::vector<double> _trk_end_y;
 		std::vector<double> _trk_end_z;
+
 		std::vector<double> _trk_mean_dedx_plane0;
 		std::vector<double> _trk_mean_dedx_plane1;
 		std::vector<double> _trk_mean_dedx_plane2;
+		std::vector<double> _trk_three_plane_dedx;
 		std::vector<double> _trk_llrpid;
 
 		std::vector<double> _shr_length;
@@ -315,7 +319,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	art::FindManyP<larpandoraobj::PFParticleMetadata>
 		pfpMetaAssoc(pfpHandle, e, fPFParticleLabel);
 
-	std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
+	const std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
 
 	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
 	{
@@ -344,6 +348,16 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 			_n_primary_tracks++;
 			art::Ptr<recob::Track> track = tracks.at(0);
 
+			const std::vector<art::Ptr<anab::Calorimetry>> calos =
+				util::GetAssocProductVector<anab::Calorimetry>(track, e, fTrackLabel, fCaloLabel);
+
+			auto dedx = alg::ThreePlaneMeandEdX(track, calos);
+			
+			_trk_mean_dedx_plane0.push_back(dedx.plane0);
+			_trk_mean_dedx_plane1.push_back(dedx.plane1);
+			_trk_mean_dedx_plane2.push_back(dedx.plane2);
+			_trk_three_plane_dedx.push_back(dedx.three_plane_average);
+
 			getTrackVariables(track);
 		}
 
@@ -357,7 +371,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 
 			getShowerVariables(shower);
 		}
-	}
+	} // end nuSlicePFPs loop
 
 	fTree->Fill();
 }
@@ -383,19 +397,23 @@ void hyperon::HyperonProduction::beginJob()
 
 	fTree->Branch("pdg",  &_pdg);
 
-	fTree->Branch("n_slices",         &_n_slices);
-	fTree->Branch("n_primary_tracks", &_n_primary_tracks);
-	fTree->Branch("trk_length",       &_trk_length);
-	fTree->Branch("trk_shr_score",    &_trk_shr_score);
-	fTree->Branch("trk_start_x",      &_trk_start_x);
-	fTree->Branch("trk_start_y",      &_trk_start_y);
-	fTree->Branch("trk_start_z",      &_trk_start_z);
-	fTree->Branch("trk_end_x",        &_trk_end_x);
-	fTree->Branch("trk_end_y",        &_trk_end_y);
-	fTree->Branch("trk_end_z",        &_trk_end_z);
-	fTree->Branch("trk_dir_x",        &_trk_dir_x);
-	fTree->Branch("trk_dir_y",        &_trk_dir_y);
-	fTree->Branch("trk_dir_z",        &_trk_dir_z);
+	fTree->Branch("n_slices",             & _n_slices);
+	fTree->Branch("n_primary_tracks",     & _n_primary_tracks);
+	fTree->Branch("trk_length",           & _trk_length);
+	fTree->Branch("trk_shr_score",        & _trk_shr_score);
+	fTree->Branch("trk_start_x",          & _trk_start_x);
+	fTree->Branch("trk_start_y",          & _trk_start_y);
+	fTree->Branch("trk_start_z",          & _trk_start_z);
+	fTree->Branch("trk_end_x",            & _trk_end_x);
+	fTree->Branch("trk_end_y",            & _trk_end_y);
+	fTree->Branch("trk_end_z",            & _trk_end_z);
+	fTree->Branch("trk_dir_x",            & _trk_dir_x);
+	fTree->Branch("trk_dir_y",            & _trk_dir_y);
+	fTree->Branch("trk_dir_z",            & _trk_dir_z);
+	fTree->Branch("trk_mean_dedx_plane0", & _trk_mean_dedx_plane0);
+	fTree->Branch("trk_mean_dedx_plane1", & _trk_mean_dedx_plane1);
+	fTree->Branch("trk_mean_dedx_plane2", & _trk_mean_dedx_plane2);
+	fTree->Branch("trk_three_plane_dedx", & _trk_three_plane_dedx);
 
 	fTree->Branch("n_primary_showers", &_n_primary_showers);
 	fTree->Branch("shr_length",        &_shr_length);
@@ -498,6 +516,7 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_trk_mean_dedx_plane0.clear();
 	_trk_mean_dedx_plane1.clear();
 	_trk_mean_dedx_plane2.clear();
+	_trk_three_plane_dedx.clear();
 	_trk_llrpid.clear();
 
 	_shr_length.clear();
