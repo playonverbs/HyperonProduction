@@ -87,5 +87,17 @@ namespace hyperon {
 
 			return findParticleAssocs.at(pProd.key());
 		}
+
+		template <typename T, typename U>
+		art::Ptr<T> GetAssocProduct(const art::Ptr<U> &pProd, const art::Event &e, const std::string &label, const std::string &assocLabel)
+		{
+			std::vector<art::Ptr<T>> assocProducts = GetAssocProductVector<T>(pProd, e, label, assocLabel);
+			if (assocProducts.empty())
+			{
+				return art::Ptr<T>();
+			}
+
+			return assocProducts.at(0);
+		}
 	}
 }
