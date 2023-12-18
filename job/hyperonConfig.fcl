@@ -11,6 +11,7 @@ analyzeEvents:
     CaloLabel:       "pandoracaliSCE"
     GeneratorLabel:  "generator"
     G4Label:         "largeant"
+    PIDLabel:        "pandoracalipidSCE"
 
     Debug:           false
 }

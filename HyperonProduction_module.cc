@@ -25,12 +25,14 @@
 #include "nusimdata/SimulationBase/MCTruth.h"
 
 #include "lardataobj/AnalysisBase/Calorimetry.h"
+#include "lardataobj/AnalysisBase/ParticleID.h"
 #include "lardataobj/RecoBase/PFParticle.h"
 #include "lardataobj/RecoBase/PFParticleMetadata.h"
 #include "lardataobj/RecoBase/Shower.h"
 #include "lardataobj/RecoBase/Slice.h"
 #include "lardataobj/RecoBase/Track.h"
 
+#include "ubana/searchingfornues/Selection/CommonDefs/PIDFuncs.h"
 #include "ubana/HyperonProduction/Utils.h"
 #include "ubana/HyperonProduction/Alg.h"
 
@@ -83,6 +85,8 @@ struct hyperon::Config {
 										 Comment("Label for simb::MCTruth") };
 	Atom<std::string> fG4Label  	   { Name("G4Label"),
 										 Comment("Label for simb::MCParticle") };
+	Atom<std::string> fPIDLabel		   { Name("PIDLabel"),
+										 Comment("Label for anab::ParticleID") };
 	Atom<bool>        fIsData          { Name("IsData"),
 										 Comment("Flag to indicate if the input is Data") };
 	Atom<bool>        fDebug           { Name("Debug"),
@@ -131,6 +135,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string fCaloLabel;
 		std::string fGeneratorLabel;
 		std::string fG4Label;
+		std::string fPIDLabel;
 		bool fIsData;
 		bool fDebug;
 
@@ -219,6 +224,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fCaloLabel(config().fCaloLabel()),
 	fGeneratorLabel(config().fGeneratorLabel()),
 	fG4Label(config().fG4Label()),
+	fPIDLabel(config().fPIDLabel()),
 	fIsData(config().fIsData()),
 	fDebug(config().fDebug())
 {
