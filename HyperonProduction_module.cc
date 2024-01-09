@@ -156,6 +156,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string _mc_ccnc;
 		std::string _mc_mode;
 
+		unsigned int _n_mctruths;
+
 		unsigned int _n_slices;
 		unsigned int _n_primary_tracks;
 		unsigned int _n_primary_showers;
@@ -253,6 +255,8 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		
 		for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
 		{
+			_n_mctruths++;
+
 			_mc_nu_pdg   = truth->GetNeutrino().Nu().PdgCode();
 			_mc_nu_q2    = truth->GetNeutrino().QSqr();
 			_mc_nu_pos_x = truth->GetNeutrino().Nu().EndX();
@@ -401,6 +405,8 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("mc_lepton_pdg", &_mc_lepton_pdg);
 	fTree->Branch("mc_lepton_mom", &_mc_lepton_mom);
 
+	fTree->Branch("n_mctruths", &_n_mctruths);
+
 	fTree->Branch("pdg",  &_pdg);
 
 	fTree->Branch("n_slices",             & _n_slices);
@@ -487,6 +493,7 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::clearTreeVariables()
 {
+	_n_mctruths        = 0;
 	_n_slices          = 0;
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
