@@ -2,6 +2,10 @@
 
 #include "art/Framework/Principal/Event.h"
 #include "canvas/Persistency/Common/Ptr.h"
+#include "canvas/Persistency/Common/FindManyP.h"
+
+#include "lardataobj/RecoBase/Hit.h"
+#include "lardataobj/AnalysisBase/BackTrackerMatchingData.h"
 
 #include <string>
 #include <vector>
@@ -99,5 +103,94 @@ namespace hyperon {
 
 			return assocProducts.at(0);
 		}
+
+		// Adapted from PeLEE code (searchingfornues/Selection/CommonDefs/BacktrackingFuncs.h)
+		art::Ptr<simb::MCParticle> getAssocMCParticle(art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData> &hittruth,
+														const std::vector<art::Ptr<recob::Hit>> &hits,
+														float &purity)
+		{
+			float pfpcharge = 0; // total hit charge from clusters
+			float maxcharge = 0; // charge backtracked to best match
+
+			std::unordered_map<int, float> trkide;
+			std::unordered_map<int, float> trkq;
+			double maxe = -1, tote = 0;
+			art::Ptr<simb::MCParticle> maxp_me; // pointer for the matched particle;
+
+			for (auto h : hits)
+			{
+				pfpcharge += h->Integral();
+
+				std::vector<art::Ptr<simb::MCParticle>> particles = hittruth.at(h.key());
+				std::vector<anab::BackTrackerHitMatchingData const *> match_vec = hittruth.data(h.key());
+
+				for (size_t i_p = 0; i_p < particles.size(); ++i_p)
+				{
+					trkide[particles[i_p]->TrackId()] += match_vec[i_p]->energy;
+					trkq[particles[i_p]->TrackId()] += h->Integral() * match_vec[i_p]->ideFraction;
+					tote += match_vec[i_p]->energy;
+
+					if (trkide[particles[i_p]->TrackId()] > maxe)
+					{
+						maxe = trkide[particles[i_p]->TrackId()];
+						maxp_me = particles[i_p];
+						maxcharge = trkq[particles[i_p]->TrackId()];
+					}
+				}
+			}
+
+			purity = maxcharge / pfpcharge;
+			/* completeness = 0; */
+
+			// number of true hits in the reco'd particle vs true hit count.
+
+			return maxp_me;
+		}
+
+		bool posMatch(TVector3 p1, TVector3 p2, const double _epsilon = 0.0001) {
+			return (p1 - p2).Mag() < _epsilon;
+		}
+	}
+
+	namespace pdg {
+		constexpr int Lambda      = 3122;
+		constexpr int NeutralKaon = 311;
+		constexpr int SigmaZero   = 3212;
+
+		inline bool isHyperon(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 3122 || absPDG == 3212 || absPDG == 3222 || absPDG == 3112;
+		}
+		inline bool isHyperon(const art::Ptr<simb::MCParticle> p) { return isHyperon(p->PdgCode()); }
+
+		inline bool isPion(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 111  || absPDG == 211;
+		}
+		inline bool isPion(const art::Ptr<simb::MCParticle> p) { return isPion(p->PdgCode()); }
+
+		inline bool isNucleon(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 111  || absPDG == 211;
+		}
+		inline bool isNucleon(const art::Ptr<simb::MCParticle> p) { return isNucleon(p->PdgCode()); }
+
+		inline bool isLepton(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 11 || absPDG == 13 || absPDG == 15;
+		}
+		inline bool isLepton(const art::Ptr<simb::MCParticle> p) { return isLepton(p->PdgCode()); }
+
+		inline bool isNeutrino(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 12 || absPDG == 14 || absPDG == 16;
+		}
+		inline bool isNeutrino(const art::Ptr<simb::MCParticle> p) { return isNeutrino(p->PdgCode()); }
+
+		inline bool isKaon(const int pdgCode) {
+			const int absPDG = abs(pdgCode);
+			return absPDG == 321 || absPDG == 311 || absPDG == 130 || absPDG == 310;
+		}
+		inline bool isKaon(const art::Ptr<simb::MCParticle> p) { return isKaon(p->PdgCode()); }
 	}
 }

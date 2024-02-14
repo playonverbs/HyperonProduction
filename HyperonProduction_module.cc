@@ -71,27 +71,33 @@ struct hyperon::Config {
 	template<typename T, std::size_t SZ>
 	using Sequence = fhicl::Sequence<T, SZ>;
 
-	Atom<std::string> fSliceLabel      { Name("SliceLabel"),
-										 Comment("Label for recob::Slice") };
-	Atom<std::string> fPFParticleLabel { Name("PFParticleLabel"),
-   										 Comment("Label for recob::PFParticle") };
-	Atom<std::string> fTrackLabel      { Name("TrackLabel"),
-										 Comment("Label for recob::Track") };
-	Atom<std::string> fShowerLabel     { Name("ShowerLabel"),
-										 Comment("Label for recob::Shower") };
-	Atom<std::string> fCaloLabel       { Name("CaloLabel"),
-										 Comment("Label for anab::Calorimetry") };
-	Atom<std::string> fGeneratorLabel  { Name("GeneratorLabel"),
-										 Comment("Label for simb::MCTruth") };
-	Atom<std::string> fG4Label  	   { Name("G4Label"),
-										 Comment("Label for simb::MCParticle") };
-	Atom<std::string> fPIDLabel		   { Name("PIDLabel"),
-										 Comment("Label for anab::ParticleID") };
-	Atom<bool>        fIsData          { Name("IsData"),
-										 Comment("Flag to indicate if the input is Data") };
-	Atom<bool>        fDebug           { Name("Debug"),
-										 Comment("Flag to enable debug messages"),
-										 false };
+	Atom<std::string> fSliceLabel         { Name("SliceLabel"),
+									        Comment("Label for recob::Slice") };
+	Atom<std::string> fPFParticleLabel    { Name("PFParticleLabel"),
+									        Comment("Label for recob::PFParticle") };
+	Atom<std::string> fTrackLabel         { Name("TrackLabel"),
+									        Comment("Label for recob::Track") };
+	Atom<std::string> fShowerLabel        { Name("ShowerLabel"),
+									        Comment("Label for recob::Shower") };
+	Atom<std::string> fCaloLabel          { Name("CaloLabel"),
+									        Comment("Label for anab::Calorimetry") };
+	Atom<std::string> fGeneratorLabel     { Name("GeneratorLabel"),
+									        Comment("Label for simb::MCTruth") };
+	Atom<std::string> fG4Label  	      { Name("G4Label"),
+									        Comment("Label for simb::MCParticle") };
+	Atom<std::string> fPIDLabel		      { Name("PIDLabel"),
+									        Comment("Label for anab::ParticleID") };
+	Atom<std::string> fHitLabel		      { Name("HitLabel"),
+										    Comment("Label for recob::Hit") };
+	Atom<std::string> fTrackHitAssnsLabel { Name("TrackHitAssnsLabel"),
+										    Comment("Label for Assns between recob::Track and recob::Hit") };
+	Atom<std::string> fHitTruthAssnsLabel { Name("HitTruthAssnsLabel"),
+										    Comment("Label for Assns between MCParticle, Hit and BackTrackerHitMatchingData") };
+	Atom<bool>        fIsData             { Name("IsData"),
+									        Comment("Flag to indicate if the input is Data") };
+	Atom<bool>        fDebug              { Name("Debug"),
+									        Comment("Flag to enable debug messages"),
+									        false };
 };
 
 class hyperon::HyperonProduction : public art::EDAnalyzer {
@@ -119,8 +125,13 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 	private:
 		void getTrackVariables(art::Ptr<recob::Track> &track);
 		void getShowerVariables(art::Ptr<recob::Shower> &shower);
+		void getMCParticleVariables(art::Ptr<simb::MCParticle> &particle, float purity);
 		void clearTreeVariables();
 		void fillNull();
+
+		void buildTruthHierarchy(std::vector<art::Ptr<simb::MCParticle>> particleVector);
+		std::vector<int> getChildIds(const art::Ptr<simb::MCParticle> &p, bool IsNeutron = false);
+		int getOrigin(int trackid);
 
 		// Declare member data here.
 
@@ -136,8 +147,17 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::string fGeneratorLabel;
 		std::string fG4Label;
 		std::string fPIDLabel;
+		std::string fHitLabel;
+		std::string fTrackHitAssnsLabel;
+		std::string fHitTruthAssnsLabel;
 		bool fIsData;
 		bool fDebug;
+
+		std::map<int, art::Ptr<simb::MCParticle>> particleMap;
+
+		std::vector<int> primary_ids;
+		std::vector<int> sigmaZeroDaughter_ids;
+		std::vector<int> lambdaDaughter_ids;
 
 		// output tree values here:
 
@@ -227,6 +247,9 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fGeneratorLabel(config().fGeneratorLabel()),
 	fG4Label(config().fG4Label()),
 	fPIDLabel(config().fPIDLabel()),
+	fHitLabel(config().fHitLabel()),
+	fTrackHitAssnsLabel(config().fTrackHitAssnsLabel()),
+	fHitTruthAssnsLabel(config().fHitTruthAssnsLabel()),
 	fIsData(config().fIsData()),
 	fDebug(config().fDebug())
 {
@@ -236,6 +259,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 void hyperon::HyperonProduction::analyze(art::Event const& e)
 {
 	// Implementation of required member function here.
+	particleMap.clear();
 	clearTreeVariables();
 
 	_run    = e.run();
@@ -268,6 +292,17 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 
 			_mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
 			_mc_mode = util::GetEventType(truth->GetNeutrino().Mode());
+
+			// look at geant4 particles
+
+			const std::vector<art::Ptr<simb::MCParticle>> g4particles =
+				util::GetAssocProductVector<simb::MCParticle>(truth, e, fGeneratorLabel, fG4Label);
+
+			for (const art::Ptr<simb::MCParticle> &g4p : g4particles) {
+				particleMap.insert(std::make_pair(g4p->TrackId(), g4p));
+			}
+
+			buildTruthHierarchy(g4particles);
 
 			break; // escape after first MCNeutrino
 		}
@@ -329,6 +364,14 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 	art::FindManyP<larpandoraobj::PFParticleMetadata>
 		pfpMetaAssoc(pfpHandle, e, fPFParticleLabel);
 
+	art::ValidHandle<std::vector<recob::Hit>> hitHandle =
+		e.getValidHandle<std::vector<recob::Hit>>(fHitLabel);
+	art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData>
+		partHitMatchAssoc(hitHandle, e, fHitTruthAssnsLabel);
+
+	art::ValidHandle<std::vector<recob::Track>> trackHandle =
+		e.getValidHandle<std::vector<recob::Track>>(fTrackLabel);
+
 	const std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
 
 	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
@@ -352,6 +395,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 		
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
+		art::FindManyP<recob::Hit> trackHitAssoc(trackHandle, e, fTrackHitAssnsLabel);
 
 		if (tracks.size() == 1)
 		{
@@ -369,6 +413,14 @@ void hyperon::HyperonProduction::analyze(art::Event const& e)
 			_trk_three_plane_dedx.push_back(dedx.three_plane_average);
 
 			getTrackVariables(track);
+
+			std::vector<art::Ptr<recob::Hit>> hits = trackHitAssoc.at(track.key());
+			
+			float pur = -1.0;
+			art::Ptr<simb::MCParticle> p = util::getAssocMCParticle(partHitMatchAssoc, hits, pur);
+			getMCParticleVariables(p, pur);
+
+
 		}
 
 		// Handle Showers
@@ -436,6 +488,16 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("shr_dir_x",         &_shr_dir_x);
 	fTree->Branch("shr_dir_y",         &_shr_dir_y);
 	fTree->Branch("shr_dir_z",         &_shr_dir_z);
+
+	fTree->Branch("trk_true_pdg",    &_trk_true_pdg);
+	fTree->Branch("trk_true_energy", &_trk_true_energy);
+	fTree->Branch("trk_true_ke",     &_trk_true_ke);
+	fTree->Branch("trk_true_px",     &_trk_true_px);
+	fTree->Branch("trk_true_py",     &_trk_true_py);
+	fTree->Branch("trk_true_pz",     &_trk_true_pz);
+	fTree->Branch("trk_true_length", &_trk_true_length);
+	fTree->Branch("trk_true_origin", &_trk_true_origin);
+	fTree->Branch("trk_true_purity", &_trk_true_purity);
 }
 
 void hyperon::HyperonProduction::endJob()
@@ -490,6 +552,22 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 	_shr_dir_z.push_back(shower->Direction().Z());
 }
 
+void hyperon::HyperonProduction::getMCParticleVariables(art::Ptr<simb::MCParticle> &particle, float purity)
+{
+	if (particle.isNonnull()) {
+		_trk_true_pdg.push_back(particle->PdgCode());
+		_trk_true_energy.push_back(particle->E());
+		_trk_true_ke.push_back(particle->T());
+		_trk_true_px.push_back(particle->Px());
+		_trk_true_py.push_back(particle->Py());
+		_trk_true_pz.push_back(particle->Pz());
+		// TODO: compute length and origin values.
+		_trk_true_length.push_back(0.0);
+		_trk_true_origin.push_back(-1);
+		_trk_true_purity.push_back(purity);
+	}
+}
+
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::clearTreeVariables()
 {
@@ -509,6 +587,10 @@ void hyperon::HyperonProduction::clearTreeVariables()
 
 	_mc_ccnc   = "";
 	_mc_mode   = "";
+
+	primary_ids.clear();
+	lambdaDaughter_ids.clear();
+	sigmaZeroDaughter_ids.clear();
 
 	_pdg.clear();
 	_x.clear();
@@ -567,6 +649,73 @@ void hyperon::HyperonProduction::fillNull()
 	clearTreeVariables();
 
 	fTree->Fill();
+}
+
+void hyperon::HyperonProduction::buildTruthHierarchy(const std::vector<art::Ptr<simb::MCParticle>> particleVector)
+{
+	for (const art::Ptr<simb::MCParticle> &p : particleVector)
+	{
+		if (p->Mother() != 0) continue;
+
+		primary_ids.push_back(p->TrackId());
+
+		std::vector<int> _ids = getChildIds(p);
+
+		if (pdg::isHyperon(p)) {
+			if (p->PdgCode() == pdg::SigmaZero && p->EndProcess() == "Decay")
+				sigmaZeroDaughter_ids.insert(sigmaZeroDaughter_ids.begin(), _ids.begin(), _ids.end());
+			else if (p->EndProcess() == "Decay")
+				lambdaDaughter_ids.insert(lambdaDaughter_ids.begin(), _ids.begin(), _ids.end());
+		}
+	}
+
+	for (size_t i_d = 0; i_d < sigmaZeroDaughter_ids.size(); i_d++)
+	{
+		if (particleMap.find(sigmaZeroDaughter_ids.at(i_d)) == particleMap.end()) continue;
+
+		auto p = particleMap.at(sigmaZeroDaughter_ids.at(i_d));
+
+		if (p->PdgCode() == pdg::Lambda) {
+			std::vector<int> _ids = getChildIds(p);
+			lambdaDaughter_ids.insert(lambdaDaughter_ids.begin(), _ids.begin(), _ids.end());
+		}
+	}
+}
+
+std::vector<int> hyperon::HyperonProduction::getChildIds(const art::Ptr<simb::MCParticle> &p, bool IsNeutron)
+{
+	std::vector<int> _decay_ids;
+
+	if (p->EndProcess() != "Decay" && !IsNeutron && !pdg::isKaon(p)) return _decay_ids;
+
+	for (int i_d = 0; i_d < p->NumberDaughters(); i_d++) {
+		if (particleMap.find(p->Daughter(i_d)) == particleMap.end()) continue;
+
+		art::Ptr<simb::MCParticle> daughter = particleMap.at(p->Daughter(i_d));
+
+		if (daughter->PdgCode() > 10000) continue;
+
+		if (!util::posMatch(
+					TVector3(daughter->Position().X(),
+						daughter->Position().Y(),
+						daughter->Position().Z()),
+					TVector3(p->EndPosition().X(),
+						p->EndPosition().Y(),
+						p->EndPosition().Z())))
+			continue;
+
+		_decay_ids.push_back(p->Daughter(i_d));
+	}
+
+	return _decay_ids;
+}
+
+int hyperon::HyperonProduction::getOrigin(int trackid)
+{
+	if (std::find(primary_ids.begin(), primary_ids.end(), trackid) != primary_ids.end()) return 1;
+	else if (std::find(lambdaDaughter_ids.begin(), lambdaDaughter_ids.end(), trackid) != lambdaDaughter_ids.end()) return 2;
+	else if (std::find(sigmaZeroDaughter_ids.begin(), sigmaZeroDaughter_ids.end(), trackid) != sigmaZeroDaughter_ids.end()) return 5;
+	else return 3;
 }
 
 DEFINE_ART_MODULE(hyperon::HyperonProduction)

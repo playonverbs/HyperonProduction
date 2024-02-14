@@ -2,18 +2,21 @@ BEGIN_PROLOG
 
 analyzeEvents:
 {
-    module_type:     "HyperonProduction"
+    module_type:        "HyperonProduction"
 
-    PFParticleLabel: "pandora"
-    ShowerLabel:     "pandora"
-    SliceLabel:      "pandora"
-    TrackLabel:      "pandora"
-    CaloLabel:       "pandoracaliSCE"
-    GeneratorLabel:  "generator"
-    G4Label:         "largeant"
-    PIDLabel:        "pandoracalipidSCE"
+    PFParticleLabel:    "pandora"
+    ShowerLabel:        "pandora"
+    SliceLabel:         "pandora"
+    TrackLabel:         "pandora"
+    CaloLabel:          "pandoracaliSCE"
+    GeneratorLabel:     "generator"
+    G4Label:            "largeant"
+    PIDLabel:           "pandoracalipidSCE"
+    HitLabel:           "gaushit"
+    TrackHitAssnsLabel: "pandora"
+    HitTruthAssnsLabel: "gaushitTruthMatch"
 
-    Debug:           false
+    Debug:              false
 }
 
 END_PROLOG
