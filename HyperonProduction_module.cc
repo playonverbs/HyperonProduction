@@ -660,7 +660,7 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
     art::Handle<std::vector<recob::Slice>> slice_handle;
     std::vector<art::Ptr<recob::Slice>> slice_vector;
 
-    if (!evt.getByLabel(fPandoraRecoLabel, slice_handle))
+    if (!evt.getByLabel(fFlashMatchRecoLabel, slice_handle))
         throw cet::exception("HyperonProduction::getTrueNuSliceID") << "No Slice Data Products Found! :(" << std::endl;
 
     art::FindManyP<recob::Hit> hit_assoc = art::FindManyP<recob::Hit>(slice_handle, evt, fFlashMatchRecoLabel);
