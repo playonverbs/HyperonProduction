@@ -379,15 +379,15 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 	}
 
 	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
-		evt.getValidHandle<std::vector<recob::Slice>>(fFlashMatchRecoLabel);
-    art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fFlashMatchRecoLabel);
+		evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+    art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fPandoraRecoLabel);
 
 	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
-		evt.getValidHandle<std::vector<recob::PFParticle>>(fFlashMatchRecoLabel);
+		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
 	art::FindManyP<recob::Track>  pfpTrackAssoc(pfpHandle, evt, fTrackLabel);
 	art::FindManyP<recob::Shower> pfpShowerAssoc(pfpHandle, evt, fShowerLabel);
 	art::FindManyP<larpandoraobj::PFParticleMetadata>
-		pfpMetaAssoc(pfpHandle, evt, fFlashMatchRecoLabel);
+		pfpMetaAssoc(pfpHandle, evt, fPandoraRecoLabel);
 
 	art::ValidHandle<std::vector<recob::Hit>> hitHandle =
 		evt.getValidHandle<std::vector<recob::Hit>>(fHitLabel);
@@ -402,14 +402,15 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
 	{
         // Is the PFP in the neutrino hierarchy?
+        // This is important, so we don't pick up the CR hypothesis output
         const art::Ptr<recob::PFParticle> parentPFP = lar_pandora::LArPandoraHelper::GetParentPFParticle(_pfp_map, nuSlicePFP);
 
         if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
             continue;
 
-        unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nuSlicePFP);
-
         // Let's just looking at primaries
+        const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nuSlicePFP);
+
         if (generation != 2)
             continue;
 
@@ -571,7 +572,7 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::Handle<std::vector<recob::PFParticle>> pfp_handle;
     std::vector<art::Ptr<recob::PFParticle>> pfp_vector;
 
-    if (!evt.getByLabel(fFlashMatchRecoLabel, pfp_handle))
+    if (!evt.getByLabel(fPandoraRecoLabel, pfp_handle))
         throw cet::exception("HyperonProduction::fillPandoraMaps") << "No PFParticle Data Products Found! :(" << std::endl;
 
     art::fill_ptr_vector(pfp_vector, pfp_handle);
@@ -582,7 +583,7 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::Handle<std::vector<recob::Slice>> slice_handle;
     std::vector<art::Ptr<recob::Slice>> slice_vector;
 
-    if (!evt.getByLabel(fFlashMatchRecoLabel, slice_handle))
+    if (!evt.getByLabel(fPandoraRecoLabel, slice_handle))
         throw cet::exception("HyperonProduction::fillPandoraMaps") << "No Slice Data Products Found! :(" << std::endl;
 
     art::fill_ptr_vector(slice_vector, slice_handle);
@@ -670,7 +671,7 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
     art::Handle<std::vector<recob::Slice>> slice_handle;
     std::vector<art::Ptr<recob::Slice>> slice_vector;
 
-    if (!evt.getByLabel(fFlashMatchRecoLabel, slice_handle))
+    if (!evt.getByLabel(fPandoraRecoLabel, slice_handle))
         throw cet::exception("HyperonProduction::getTrueNuSliceID") << "No Slice Data Products Found! :(" << std::endl;
 
     if (slice_handle.isValid())
@@ -678,7 +679,7 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
 
     _n_slices = slice_vector.size();
 
-    art::FindManyP<recob::Hit> hit_assoc = art::FindManyP<recob::Hit>(slice_handle, evt, fFlashMatchRecoLabel);
+    art::FindManyP<recob::Hit> hit_assoc = art::FindManyP<recob::Hit>(slice_handle, evt, fPandoraRecoLabel);
 
     // Now find true nu slice ID
     int true_slice_n_hits(-1);
@@ -729,16 +730,16 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
 
     art::Handle<std::vector<recob::PFParticle>> pfp_handle;
 
-    if (!evt.getByLabel(fFlashMatchRecoLabel, pfp_handle))
+    if (!evt.getByLabel(fPandoraRecoLabel, pfp_handle))
         throw cet::exception("HyperonProduction::CollectHitsFromClusters") << "No PFParticle Data Products Found! :(" << std::endl;
 
     art::Handle<std::vector<recob::Cluster>> cluster_handle;
 
-    if (!evt.getByLabel(fFlashMatchRecoLabel, cluster_handle)) 
+    if (!evt.getByLabel(fPandoraRecoLabel, cluster_handle)) 
         throw cet::exception("HyperonProduction::CollectHitsFromClusters") << "No Cluster Data Products Found! :(" << std::endl;
 
-    art::FindManyP<recob::Cluster> pfp_clusters_assoc = art::FindManyP<recob::Cluster>(pfp_handle, evt, fFlashMatchRecoLabel);
-    art::FindManyP<recob::Hit> cluster_hit_assoc = art::FindManyP<recob::Hit>(cluster_handle, evt, fFlashMatchRecoLabel);
+    art::FindManyP<recob::Cluster> pfp_clusters_assoc = art::FindManyP<recob::Cluster>(pfp_handle, evt, fPandoraRecoLabel);
+    art::FindManyP<recob::Hit> cluster_hit_assoc = art::FindManyP<recob::Hit>(cluster_handle, evt, fPandoraRecoLabel);
 
     std::vector<art::Ptr<recob::Cluster>> clusters = pfp_clusters_assoc.at(pfparticle.key());
 
@@ -755,34 +756,73 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
 
 void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
 {
-	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
-		evt.getValidHandle<std::vector<recob::Slice>>(fFlashMatchRecoLabel);
-	std::vector<art::Ptr<recob::Slice>> slice_vector;
+    art::Handle<std::vector<recob::PFParticle>> fm_pfp_handle;
+    std::vector<art::Ptr<recob::PFParticle>> fm_pfp_vector;
 
-	if (slice_handle.isValid())
-		art::fill_ptr_vector(slice_vector, slice_handle);
+    if (!evt.getByLabel(fFlashMatchRecoLabel, fm_pfp_handle))
+        throw cet::exception("HyperonProduction::getFlashMatchNuSliceID") << "No PFParticle Data Products Found! :(" << std::endl;
 
-	art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fFlashMatchRecoLabel);
+    art::fill_ptr_vector(fm_pfp_vector, fm_pfp_handle);
 
-    // Should be at max one neutrino slice
-	for (const art::Ptr<recob::Slice> &slice : slice_vector)
-	{
-		// collect all PFPs associated with the current slice key
-		std::vector<art::Ptr<recob::PFParticle>> slicePFPs(slice_pfp_assoc.at(slice.key()));
+    std::vector<art::Ptr<recob::PFParticle>> neutrinoPFPs;
+    lar_pandora::LArPandoraHelper::SelectNeutrinoPFParticles(fm_pfp_vector, neutrinoPFPs);
 
-		for (const art::Ptr<recob::PFParticle> &slicePFP : slicePFPs)
-		{
-			const bool is_primary(slicePFP->IsPrimary());
-			const bool is_neutrino(std::abs(slicePFP->PdgCode()) == 12 || std::abs(slicePFP->PdgCode()) == 14);
+    if (neutrinoPFPs.size() > 1)
+    {
+        throw cet::exception("HyperonProduction::getFlashMatchNuSliceID") << "Too many neutrinos found!" << std::endl;
+    }
+    else if (neutrinoPFPs.size() == 1)
+    {
+        art::FindManyP<recob::Slice> fm_slice_assoc = art::FindManyP<recob::Slice>(fm_pfp_handle, evt, fFlashMatchRecoLabel);
+        const std::vector<art::Ptr<recob::Slice>> &fm_slices = fm_slice_assoc.at(neutrinoPFPs[0].key());
 
-			if (!(is_primary && is_neutrino))
-				continue;
+        if (fm_slices.empty())
+            return;
 
-			_flash_match_nu_slice_ID = slice.key();
+        // Get hits, and then work out if they also live in the pandoraPatRec reco?
+        const art::Ptr<recob::Slice> &fm_slice(fm_slices.at(0));
 
-			return;
-		}
-	}
+        art::Handle<std::vector<recob::Slice>> fm_slice_handle;
+
+        if (!evt.getByLabel(fFlashMatchRecoLabel, fm_slice_handle))
+            throw cet::exception("HyperonProduction::getFlashMatchNuSliceID") << "No Flash Match Slice Data Products Found!" << std::endl;
+
+        art::FindManyP<recob::Hit> fm_hit_assoc = art::FindManyP<recob::Hit>(fm_slice_handle, evt, fFlashMatchRecoLabel);
+        const std::vector<art::Ptr<recob::Hit>> &fm_slice_hits(fm_hit_assoc.at(fm_slice.key()));
+
+        if (fm_slice_hits.empty())
+            return;
+
+        // Get equivalent pandoraPatRec products
+        art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+            evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+
+        std::vector<art::Ptr<recob::Slice>> slice_vector;
+
+        if (slice_handle.isValid())
+            art::fill_ptr_vector(slice_vector, slice_handle);
+
+        art::FindManyP<recob::Hit> hit_assoc = art::FindManyP<recob::Hit>(slice_handle, evt, fPandoraRecoLabel);
+
+        // Loop through pandoraPatRecSlices
+        for (art::Ptr<recob::Slice> &slice : slice_vector)
+        {
+            const std::vector<art::Ptr<recob::Hit>> &slice_hits(hit_assoc.at(slice.key()));
+
+            // could loop over whichever is smaller - to save time...
+            const std::vector<art::Ptr<recob::Hit>> &hitsToLoop(slice_hits.size() < fm_slice_hits.size() ? slice_hits : fm_slice_hits);
+            const art::Ptr<recob::Hit> &hitToCompare(slice_hits.size() < fm_slice_hits.size() ? fm_slice_hits.front() : slice_hits.front());
+
+            for (const art::Ptr<recob::Hit> &hit : hitsToLoop)
+            {
+                if (hit.key() == hitToCompare.key())
+                {
+                    _flash_match_nu_slice_ID = slice->ID();
+                    return;
+                }
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
