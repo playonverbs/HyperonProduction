@@ -28,6 +28,7 @@
 #include "lardataobj/AnalysisBase/ParticleID.h"
 #include "lardataobj/RecoBase/PFParticle.h"
 #include "lardataobj/RecoBase/PFParticleMetadata.h"
+#include "lardataobj/RecoBase/Cluster.h"
 #include "lardataobj/RecoBase/Shower.h"
 #include "lardataobj/RecoBase/Slice.h"
 #include "lardataobj/RecoBase/Track.h"
@@ -57,6 +58,7 @@ namespace hyperon {
 
 	// define some default error values;
 	namespace bogus {
+		constexpr double DOUBLE = -999.0;
 		constexpr double LENGTH = -999.0;
 		constexpr double POS    = -999.9;
 		constexpr double ANGLE  = -999.0;
@@ -137,9 +139,11 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         bool isEM(const art::Ptr<simb::MCParticle> &mc_particle);
         int getLeadEMTrackID(const art::Ptr<simb::MCParticle> &mc_particle);
         void getTrueNuSliceID(art::Event const& evt);
+        std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt, 
+            const art::Ptr<recob::PFParticle> &pfparticle);
+		void getMCParticleVariables(art::Ptr<simb::MCParticle> &particle);
 		void getTrackVariables(art::Ptr<recob::Track> &track);
 		void getShowerVariables(art::Ptr<recob::Shower> &shower);
-		void getMCParticleVariables(art::Ptr<simb::MCParticle> &particle, float purity);
 		void clearTreeVariables();
 		void fillNull();
 
@@ -192,19 +196,39 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 		unsigned int _n_slices;
         unsigned int _true_nu_slice_ID;
+        double _true_nu_slice_completeness;
+        double _true_nu_slice_purity;
         unsigned int _pandora_nu_slice_ID;
         unsigned int _flash_match_nu_slice_ID;
 		unsigned int _n_primary_tracks;
 		unsigned int _n_primary_showers;
 
+        /////////////////////////////
 		// RecoParticle fields
-		std::vector<int>    _pdg;
-		std::vector<double> _x;
-		std::vector<double> _y;
-		std::vector<double> _z;
+        /////////////////////////////
+        // True stuff
+    	std::vector<double> _pfp_purity;
+		std::vector<double> _pfp_completeness;
+        std::vector<bool>   _pfp_has_truth;
+        std::vector<int>    _pfp_trackID;
+        std::vector<int>    _pfp_true_pdg;
+		std::vector<double> _pfp_true_energy;
+		std::vector<double> _pfp_true_ke;
+		std::vector<double> _pfp_true_px;
+		std::vector<double> _pfp_true_py;
+		std::vector<double> _pfp_true_pz;
+		std::vector<double> _pfp_true_length;
+		std::vector<int>    _pfp_true_origin;
 
+        // Reco pfp stuff
+		std::vector<int>    _pfp_pdg;
+		std::vector<double> _pfp_trk_shr_score;
+		std::vector<double> _pfp_x;
+		std::vector<double> _pfp_y;
+		std::vector<double> _pfp_z;
+
+        // Reco track stuff
 		std::vector<double> _trk_length;
-		std::vector<double> _trk_shr_score;
 		std::vector<double> _trk_dir_x;
 		std::vector<double> _trk_dir_y;
 		std::vector<double> _trk_dir_z;
@@ -213,14 +237,14 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<double> _trk_start_z;
 		std::vector<double> _trk_end_x;
 		std::vector<double> _trk_end_y;
-		std::vector<double> _trk_end_z;
-
+        std::vector<double> _trk_end_z;
 		std::vector<double> _trk_mean_dedx_plane0;
 		std::vector<double> _trk_mean_dedx_plane1;
 		std::vector<double> _trk_mean_dedx_plane2;
 		std::vector<double> _trk_three_plane_dedx;
 		std::vector<double> _trk_llrpid;
 
+        // Reco shower stuff 
 		std::vector<double> _shr_length;
 		std::vector<double> _shr_dir_x;
 		std::vector<double> _shr_dir_y;
@@ -235,18 +259,6 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<double> _shr_dedx_plane1;
 		std::vector<double> _shr_dedx_plane2;
 		std::vector<double> _shr_open_angle;
-
-		std::vector<bool>   _has_truth;
-		std::vector<int>    _mc_truth_index;
-		std::vector<int>    _trk_true_pdg;
-		std::vector<double> _trk_true_energy;
-		std::vector<double> _trk_true_ke;
-		std::vector<double> _trk_true_px;
-		std::vector<double> _trk_true_py;
-		std::vector<double> _trk_true_pz;
-		std::vector<double> _trk_true_length;
-		std::vector<int>    _trk_true_origin;
-		std::vector<double> _trk_true_purity;
 
 		TTree* fTree;
 
@@ -395,7 +407,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 		return;
 	}
 
-    if (fDebug) std::cout << "Filling Track/Shower Variables..." << std::endl;
+    if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
 
 	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
 		evt.getValidHandle<std::vector<recob::PFParticle>>(fFlashMatchRecoLabel);
@@ -419,7 +431,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 		if (nuSlicePFP->Parent() != static_cast<long unsigned int>(nuID))
 			continue;
 
-		_pdg.push_back(nuSlicePFP->PdgCode());
+		_pfp_pdg.push_back(nuSlicePFP->PdgCode());
 
 		std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfpMetas =
 			pfpMetaAssoc.at(nuSlicePFP.key());
@@ -430,9 +442,18 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 
 			if (pfpMeta->GetPropertiesMap().find("TrackScore")
 					!= pfpMeta->GetPropertiesMap().end())
-				_trk_shr_score.push_back(pfpMeta->GetPropertiesMap().at("TrackScore"));
+				_pfp_trk_shr_score.push_back(pfpMeta->GetPropertiesMap().at("TrackScore"));
 		}
 		
+        // Get PFP truth matching variables
+        if (!fIsData) 
+        {
+            float pur(-1);
+            std::vector<art::Ptr<recob::Hit>> pfp_hits = collectHitsFromClusters(evt, nuSlicePFP);
+		    art::Ptr<simb::MCParticle> matched_mc_particle = util::getAssocMCParticle(partHitMatchAssoc, pfp_hits, pur);
+		    getMCParticleVariables(matched_mc_particle);
+        }
+
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
 		art::FindManyP<recob::Hit> trackHitAssoc(trackHandle, evt, fTrackHitAssnsLabel);
@@ -453,14 +474,6 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 			_trk_three_plane_dedx.push_back(dedx.three_plane_average);
 
 			getTrackVariables(track);
-
-			std::vector<art::Ptr<recob::Hit>> hits = trackHitAssoc.at(track.key());
-			
-			float pur = -1.0;
-			art::Ptr<simb::MCParticle> p = util::getAssocMCParticle(partHitMatchAssoc, hits, pur);
-			getMCParticleVariables(p, pur);
-
-
 		}
 
 		// Handle Showers
@@ -501,16 +514,34 @@ void hyperon::HyperonProduction::beginJob()
 
 	fTree->Branch("n_mctruths", &_n_mctruths);
 
-	fTree->Branch("pdg",  &_pdg);
+	fTree->Branch("n_slices",                    & _n_slices);
+    fTree->Branch("true_nu_slice_ID",            & _true_nu_slice_ID);
+    fTree->Branch("true_nu_slice_completeness",  & _true_nu_slice_completeness);
+    fTree->Branch("true_nu_slice_purity",        & _true_nu_slice_purity);
+    fTree->Branch("pandora_nu_slice_ID",         & _pandora_nu_slice_ID);
+    fTree->Branch("flash_match_nu_slice_ID",     & _flash_match_nu_slice_ID);
 
-	fTree->Branch("n_slices",                & _n_slices);
-    fTree->Branch("true_nu_slice_ID",        & _true_nu_slice_ID);
-    fTree->Branch("pandora_nu_slice_ID",     & _pandora_nu_slice_ID);
-    fTree->Branch("flash_match_nu_slice_ID", & _flash_match_nu_slice_ID);
+    fTree->Branch("pfp_purity",        & _pfp_purity);
+	fTree->Branch("pfp_completeness",  & _pfp_completeness);
+    fTree->Branch("pfp_has_truth",     & _pfp_has_truth);
+    fTree->Branch("pfp_trackID",       & _pfp_trackID);
+    fTree->Branch("pfp_true_pdg",      & _pfp_true_pdg);
+	fTree->Branch("pfp_true_energy",   & _pfp_true_energy);
+    fTree->Branch("pfp_true_ke",       & _pfp_true_ke);
+	fTree->Branch("pfp_true_px",       & _pfp_true_px);
+	fTree->Branch("pfp_true_py",       & _pfp_true_py);
+	fTree->Branch("pfp_true_pz",       & _pfp_true_pz);
+	fTree->Branch("pfp_true_length",   & _pfp_true_length);
+	fTree->Branch("pfp_true_origin",   & _pfp_true_origin);
+
+    fTree->Branch("pfp_pdg",            & _pfp_pdg);
+    fTree->Branch("pfp_trk_shr_score",  & _pfp_trk_shr_score);
+    fTree->Branch("pfp_x",              & _pfp_x);
+    fTree->Branch("pfp_y",              & _pfp_y);
+    fTree->Branch("pfp_z",              & _pfp_z);
 
 	fTree->Branch("n_primary_tracks",        & _n_primary_tracks);
 	fTree->Branch("trk_length",              & _trk_length);
-	fTree->Branch("trk_shr_score",           & _trk_shr_score);
 	fTree->Branch("trk_start_x",             & _trk_start_x);
 	fTree->Branch("trk_start_y",             & _trk_start_y);
 	fTree->Branch("trk_start_z",             & _trk_start_z);
@@ -534,16 +565,6 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("shr_dir_x",         &_shr_dir_x);
 	fTree->Branch("shr_dir_y",         &_shr_dir_y);
 	fTree->Branch("shr_dir_z",         &_shr_dir_z);
-
-	fTree->Branch("trk_true_pdg",    &_trk_true_pdg);
-	fTree->Branch("trk_true_energy", &_trk_true_energy);
-	fTree->Branch("trk_true_ke",     &_trk_true_ke);
-	fTree->Branch("trk_true_px",     &_trk_true_px);
-	fTree->Branch("trk_true_py",     &_trk_true_py);
-	fTree->Branch("trk_true_pz",     &_trk_true_pz);
-	fTree->Branch("trk_true_length", &_trk_true_length);
-	fTree->Branch("trk_true_origin", &_trk_true_origin);
-	fTree->Branch("trk_true_purity", &_trk_true_purity);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -667,9 +688,10 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
     art::fill_ptr_vector(slice_vector, slice_handle);
 
     // Now find true nu slice ID
-    int highest_n_hits(-1);
+    int true_slice_n_hits(-1);
+    int true_slice_n_signal_hits(-1);
     std::map<int, int> slice_signal_hit_map;
-    unsigned int total_true_hits(0);
+    unsigned int total_signal_hits(0);
 
     for (art::Ptr<recob::Slice> &slice : slice_vector)
     {
@@ -679,18 +701,98 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
 
         for (const art::Ptr<recob::Hit> &slice_hit : slice_hits)
         {
+            // Hits from cosmics won't have an associated trackID
             if (_hit_to_trackID.find(slice_hit.key()) == _hit_to_trackID.end())
                 continue;
 
             ++slice_signal_hit_map[slice->ID()];
-            ++total_true_hits;
+            ++total_signal_hits;
         }
 
-        if ((slice_signal_hit_map[slice->ID()] > highest_n_hits) && (slice_signal_hit_map[slice->ID()] > 0))
+        const int slice_n_signal_hits = slice_signal_hit_map[slice->ID()];
+
+        if ((slice_n_signal_hits > true_slice_n_hits) && (slice_n_signal_hits > 0))
         {
-            highest_n_hits = slice_signal_hit_map[slice->ID()];
+            true_slice_n_signal_hits = slice_n_signal_hits;
+            true_slice_n_hits = slice_hits.size();
             _true_nu_slice_ID = slice->ID();
         }
+    }
+
+    // Calculate slice completeness and purity
+    if (true_slice_n_signal_hits > 0)
+    {
+        _true_nu_slice_completeness = static_cast<double>(true_slice_n_signal_hits) / static_cast<double>(total_signal_hits);
+        _true_nu_slice_purity = static_cast<double>(true_slice_n_signal_hits) / static_cast<double>(true_slice_n_hits);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClusters(art::Event const& evt, 
+    const art::Ptr<recob::PFParticle> &pfparticle)
+{
+    std::vector<art::Ptr<recob::Hit>> hits;
+
+    art::Handle<std::vector<recob::PFParticle>> pfp_handle;
+
+    if (!evt.getByLabel(fFlashMatchRecoLabel, pfp_handle))
+        throw cet::exception("HyperonProduction::CollectHitsFromClusters") << "No PFParticle Data Products Found! :(" << std::endl;
+
+    art::Handle<std::vector<recob::Cluster>> cluster_handle;
+
+    if (!evt.getByLabel(fFlashMatchRecoLabel, cluster_handle)) 
+        throw cet::exception("HyperonProduction::CollectHitsFromClusters") << "No Cluster Data Products Found! :(" << std::endl;
+
+    art::FindManyP<recob::Cluster> pfp_clusters_assoc = art::FindManyP<recob::Cluster>(pfp_handle, evt, fFlashMatchRecoLabel);
+    art::FindManyP<recob::Hit> cluster_hit_assoc = art::FindManyP<recob::Hit>(cluster_handle, evt, fFlashMatchRecoLabel);
+
+    std::vector<art::Ptr<recob::Cluster>> clusters = pfp_clusters_assoc.at(pfparticle.key());
+
+    for (const art::Ptr<recob::Cluster> cluster : clusters)
+    {
+        std::vector<art::Ptr<recob::Hit>> cluster_hits = cluster_hit_assoc.at(cluster.key());
+        hits.insert(hits.end(), cluster_hits.begin(), cluster_hits.end());
+    }
+
+    return hits;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getMCParticleVariables(art::Ptr<simb::MCParticle> &particle)
+{
+	if (particle.isNonnull()) 
+    {
+        _pfp_has_truth.push_back(true);
+        _pfp_trackID.push_back(particle->TrackId());
+		_pfp_true_pdg.push_back(particle->PdgCode());
+		_pfp_true_energy.push_back(particle->E());
+		_pfp_true_ke.push_back(particle->T());
+		_pfp_true_px.push_back(particle->Px());
+		_pfp_true_py.push_back(particle->Py());
+		_pfp_true_pz.push_back(particle->Pz());
+		// TODO: compute length and origin values.
+		_pfp_true_length.push_back(0.0);
+		_pfp_true_origin.push_back(-1);
+		_pfp_completeness.push_back(-1.0); // TODO: Actually set the completeness
+		_pfp_purity.push_back(-1.0);       // TODO: Actually set the purity
+	}
+    else
+    {
+        // fill with bogus values...
+        _pfp_has_truth.push_back(false);
+        _pfp_trackID.push_back(-1);
+		_pfp_true_pdg.push_back(-1);
+		_pfp_true_energy.push_back(bogus::DOUBLE);
+		_pfp_true_ke.push_back(bogus::DOUBLE);
+		_pfp_true_px.push_back(bogus::DOUBLE);
+		_pfp_true_py.push_back(bogus::DOUBLE);
+		_pfp_true_pz.push_back(bogus::DOUBLE);
+		_pfp_true_length.push_back(bogus::DOUBLE);
+		_pfp_true_origin.push_back(-1);
+		_pfp_completeness.push_back(bogus::DOUBLE);
+		_pfp_purity.push_back(bogus::DOUBLE);
     }
 }
 
@@ -745,32 +847,16 @@ void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &sho
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void hyperon::HyperonProduction::getMCParticleVariables(art::Ptr<simb::MCParticle> &particle, float purity)
-{
-	if (particle.isNonnull()) {
-		_trk_true_pdg.push_back(particle->PdgCode());
-		_trk_true_energy.push_back(particle->E());
-		_trk_true_ke.push_back(particle->T());
-		_trk_true_px.push_back(particle->Px());
-		_trk_true_py.push_back(particle->Py());
-		_trk_true_pz.push_back(particle->Pz());
-		// TODO: compute length and origin values.
-		_trk_true_length.push_back(0.0);
-		_trk_true_origin.push_back(-1);
-		_trk_true_purity.push_back(purity); // TODO: Actually set the purity
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // TODO: define and set NULL values for failure modes accessing slice, track, etc..
 void hyperon::HyperonProduction::clearTreeVariables()
 {
-	_n_mctruths              = 0;
-	_n_slices                = 0;
-    _true_nu_slice_ID        = -1;
-    _pandora_nu_slice_ID     = -1;
-    _flash_match_nu_slice_ID = -1;
+	_n_mctruths                 = 0;
+	_n_slices                   = 0;
+    _true_nu_slice_ID           = -1;
+    _true_nu_slice_completeness = -999.0;
+    _true_nu_slice_purity       = -999.0;
+    _pandora_nu_slice_ID        = -1;
+    _flash_match_nu_slice_ID    = -1;
 
 	_n_primary_tracks  = 0;
 	_n_primary_showers = 0;
@@ -791,13 +877,26 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	lambdaDaughter_ids.clear();
 	sigmaZeroDaughter_ids.clear();
 
-	_pdg.clear();
-	_x.clear();
-	_y.clear();
-	_z.clear();
+    _pfp_purity.clear();
+    _pfp_completeness.clear();
+    _pfp_has_truth.clear();
+    _pfp_trackID.clear();
+    _pfp_true_pdg.clear();
+	_pfp_true_energy.clear();
+    _pfp_true_ke.clear();
+	_pfp_true_px.clear();
+	_pfp_true_py.clear();
+	_pfp_true_pz.clear();
+	_pfp_true_length.clear();
+	_pfp_true_origin.clear();
+
+    _pfp_pdg.clear();
+    _pfp_trk_shr_score.clear();
+    _pfp_x.clear();
+    _pfp_y.clear();
+    _pfp_z.clear();
 
 	_trk_length.clear();
-	_trk_shr_score.clear();
 	_trk_dir_x.clear();
 	_trk_dir_y.clear();
 	_trk_dir_z.clear();
@@ -827,18 +926,6 @@ void hyperon::HyperonProduction::clearTreeVariables()
 	_shr_dedx_plane1.clear();
 	_shr_dedx_plane2.clear();
 	_shr_open_angle.clear();
-
-	_has_truth.clear();
-	_mc_truth_index.clear();
-	_trk_true_pdg.clear();
-	_trk_true_energy.clear();
-	_trk_true_ke.clear();
-	_trk_true_px.clear();
-	_trk_true_py.clear();
-	_trk_true_pz.clear();
-	_trk_true_length.clear();
-	_trk_true_origin.clear();
-	_trk_true_purity.clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
