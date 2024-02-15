@@ -141,7 +141,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void getTrueNuSliceID(art::Event const& evt);
         std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt, 
             const art::Ptr<recob::PFParticle> &pfparticle);
-		void getMCParticleVariables(art::Ptr<simb::MCParticle> &particle);
+        void getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
 		void getTrackVariables(art::Ptr<recob::Track> &track);
 		void getShowerVariables(art::Ptr<recob::Shower> &shower);
 		void clearTreeVariables();
@@ -447,12 +447,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 		
         // Get PFP truth matching variables
         if (!fIsData) 
-        {
-            float pur(-1);
-            std::vector<art::Ptr<recob::Hit>> pfp_hits = collectHitsFromClusters(evt, nuSlicePFP);
-		    art::Ptr<simb::MCParticle> matched_mc_particle = util::getAssocMCParticle(partHitMatchAssoc, pfp_hits, pur);
-		    getMCParticleVariables(matched_mc_particle);
-        }
+            getMCParticleVariables(evt, nuSlicePFP);
 
 		// Handle Tracks
 		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
@@ -760,23 +755,57 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void hyperon::HyperonProduction::getMCParticleVariables(art::Ptr<simb::MCParticle> &particle)
+void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
 {
-	if (particle.isNonnull()) 
+    std::vector<art::Ptr<recob::Hit>> pfp_hits = collectHitsFromClusters(evt, pfparticle);
+
+    std::map<int, int> counting_map;
+    for (const art::Ptr<recob::Hit> pfp_hit : pfp_hits)
+     {
+         if (_hit_to_trackID.find(pfp_hit.key()) == _hit_to_trackID.end())
+             continue;
+
+         const int trackID(_hit_to_trackID.at(pfp_hit.key()));
+
+         if (counting_map.find(trackID) == counting_map.end())
+             counting_map[trackID] = 1;
+         else
+             ++counting_map[trackID];
+     }
+
+    int max_hits = -1;
+    int matched_trackID = -1;
+
+    // pragmatic tie-breaker
+    for (auto &entry : counting_map)
     {
+        if ((entry.second > max_hits) || ((entry.second == max_hits) && (entry.first > matched_trackID)))
+        {
+            max_hits = entry.second;
+            matched_trackID = entry.first;
+        }
+    }
+
+	if (_mc_particle_map.find(matched_trackID) != _mc_particle_map.end()) 
+    {
+        const art::Ptr<simb::MCParticle> &matched_mc_particle(_mc_particle_map.at(matched_trackID)); 
+
         _pfp_has_truth.push_back(true);
-        _pfp_trackID.push_back(particle->TrackId());
-		_pfp_true_pdg.push_back(particle->PdgCode());
-		_pfp_true_energy.push_back(particle->E());
-		_pfp_true_ke.push_back(particle->T());
-		_pfp_true_px.push_back(particle->Px());
-		_pfp_true_py.push_back(particle->Py());
-		_pfp_true_pz.push_back(particle->Pz());
+        _pfp_trackID.push_back(matched_mc_particle->TrackId());
+		_pfp_true_pdg.push_back(matched_mc_particle->PdgCode());
+		_pfp_true_energy.push_back(matched_mc_particle->E());
+		_pfp_true_ke.push_back(matched_mc_particle->T());
+		_pfp_true_px.push_back(matched_mc_particle->Px());
+		_pfp_true_py.push_back(matched_mc_particle->Py());
+		_pfp_true_pz.push_back(matched_mc_particle->Pz());
 		// TODO: compute length and origin values.
 		_pfp_true_length.push_back(0.0);
 		_pfp_true_origin.push_back(-1);
-		_pfp_completeness.push_back(-1.0); // TODO: Actually set the completeness
-		_pfp_purity.push_back(-1.0);       // TODO: Actually set the purity
+
+        const int n_true_hits = _trackID_to_hits.at(matched_trackID).size();
+
+        _pfp_completeness.push_back(static_cast<double>(max_hits) / static_cast<double>(n_true_hits));
+        _pfp_purity.push_back(static_cast<double>(max_hits) / pfp_hits.size());
 	}
     else
     {
