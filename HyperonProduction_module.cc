@@ -141,6 +141,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void getTrueNuSliceID(art::Event const& evt);
         std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt, 
             const art::Ptr<recob::PFParticle> &pfparticle);
+        void getFlashMatchNuSliceID(art::Event const& evt);
+        void getTopologicalScoreNuSliceID(art::Event const& evt);
         void getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
 		void getTrackVariables(art::Ptr<recob::Track> &track);
 		void getShowerVariables(art::Ptr<recob::Shower> &shower);
@@ -152,9 +154,6 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		int getOrigin(int trackid);
 
 		// Declare member data here.
-
-		unsigned int fNPFParticles;
-		unsigned int fNPrimaryChildren;
 
 		// FHICL Params
         std::string fPandoraRecoLabel;
@@ -194,14 +193,14 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 		unsigned int _n_mctruths;
 
-		unsigned int _n_slices;
+        unsigned int _n_slices;
         unsigned int _true_nu_slice_ID;
         double _true_nu_slice_completeness;
         double _true_nu_slice_purity;
         unsigned int _pandora_nu_slice_ID;
         unsigned int _flash_match_nu_slice_ID;
-		unsigned int _n_primary_tracks;
-		unsigned int _n_primary_showers;
+        //unsigned int _n_primary_tracks;          // do we need these if we have multiple slices?
+        //unsigned int _n_primary_showers;         // do we need these if we have multiple slices?
 
         /////////////////////////////
 		// RecoParticle fields
@@ -262,9 +261,10 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 
 		TTree* fTree;
 
-        // reco->truth matching helpers
+        // Maps for analyzer
         std::map<int, int> _hit_to_trackID;                 // Linking hit -> trackID of true owner
-        std::map<int, std::vector<int>> _trackID_to_hits;  // Linking trackID -> nTrueHits
+        std::map<int, art::Ptr<recob::Slice>> _slice_map;   // Linking sliceID -> slice
+        std::map<int, std::vector<int>> _trackID_to_hits;   // Linking trackID -> nTrueHits
         lar_pandora::MCParticleMap _mc_particle_map;        // Linking TrackID -> MCParticle
         lar_pandora::PFParticleMap _pfp_map;                // Linking Self() -> PFParticle
 };
@@ -356,58 +356,31 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 		}
 	}
 
-    if (fDebug) std::cout << "Pandora slice ID..." << std::endl;
+    // Find the flash matched neutrino slice (if one exists)
+    if (fDebug) std::cout << "Getting flash match slice ID..." << std::endl;
 
-	art::ValidHandle<std::vector<recob::Slice>> sliceHandle =
-		evt.getValidHandle<std::vector<recob::Slice>>(fFlashMatchRecoLabel);
-	std::vector<art::Ptr<recob::Slice>> sliceVector;
+    getFlashMatchNuSliceID(evt);
 
-	if (sliceHandle.isValid())
-		art::fill_ptr_vector(sliceVector, sliceHandle);
+    // Find the Pandora (highest topological score) neutrino slice (if one exists)
+    if (fDebug) std::cout << "Getting the highest topological score slice ID..." << std::endl;
 
-	art::FindManyP<recob::PFParticle> slicePFPAssoc(sliceHandle, evt, fFlashMatchRecoLabel);
+    getTopologicalScoreNuSliceID(evt);
 
-	int nuID = -1;
-	int nuSliceKey = -1;
+    // Fill the reconstructed neutrino hierarchy variables (using flash match neutrino slice)
+    if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
 
-	_n_slices = sliceVector.size();
-
-	// iterate through all collected Slice objects.
-	for (const art::Ptr<recob::Slice> &slice : sliceVector)
-	{
-		// collect all PFPs associated with the current slice key
-		std::vector<art::Ptr<recob::PFParticle>> slicePFPs(slicePFPAssoc.at(slice.key()));
-
-		for (const art::Ptr<recob::PFParticle> &slicePFP : slicePFPs)
-		{
-			const bool isPrimary(slicePFP->IsPrimary());
-			const bool isNeutrino(std::abs(slicePFP->PdgCode()) == 12 || std::abs(slicePFP->PdgCode()) == 14);
-
-			if (!(isPrimary && isNeutrino))
-				continue;
-
-			nuSliceKey = slice.key();
-			nuID = slicePFP->Self();
-			fNPFParticles = slicePFPs.size();
-			fNPrimaryChildren = slicePFP->NumDaughters();
-
-			break;
-		}
-
-		// this assumes only one neutrino hierarchy among all slice.
-		if (nuID >= 0)
-			break;
-	}
-
-	if (nuSliceKey < 0)
+	if ((_flash_match_nu_slice_ID < 0) || (_slice_map.find(_flash_match_nu_slice_ID) == _slice_map.end()))
 	{
 		if (fDebug)
-			FNLOG("no nuSliceKey found");
+			FNLOG("no flash match slice found");
+
 		fillNull();
 		return;
 	}
 
-    if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
+	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+		evt.getValidHandle<std::vector<recob::Slice>>(fFlashMatchRecoLabel);
+    art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fFlashMatchRecoLabel);
 
 	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
 		evt.getValidHandle<std::vector<recob::PFParticle>>(fFlashMatchRecoLabel);
@@ -424,12 +397,21 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 	art::ValidHandle<std::vector<recob::Track>> trackHandle =
 		evt.getValidHandle<std::vector<recob::Track>>(fTrackLabel);
 
-	const std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slicePFPAssoc.at(nuSliceKey));
+	const std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slice_pfp_assoc.at(_slice_map.at(_flash_match_nu_slice_ID).key()));
 
 	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
 	{
-		if (nuSlicePFP->Parent() != static_cast<long unsigned int>(nuID))
-			continue;
+        // Is the PFP in the neutrino hierarchy?
+        const art::Ptr<recob::PFParticle> parentPFP = lar_pandora::LArPandoraHelper::GetParentPFParticle(_pfp_map, nuSlicePFP);
+
+        if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
+            continue;
+
+        unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nuSlicePFP);
+
+        // Let's just looking at primaries
+        if (generation != 2)
+            continue;
 
 		_pfp_pdg.push_back(nuSlicePFP->PdgCode());
 
@@ -455,7 +437,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 
 		if (tracks.size() == 1)
 		{
-			_n_primary_tracks++;
+			//_n_primary_tracks++;
 			art::Ptr<recob::Track> track = tracks.at(0);
 
 			const std::vector<art::Ptr<anab::Calorimetry>> calos =
@@ -476,7 +458,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 
 		if (showers.size() == 1)
 		{
-			_n_primary_showers++;
+			//_n_primary_showers++;
 			art::Ptr<recob::Shower> shower = showers.at(0);
 
 			getShowerVariables(shower);
@@ -535,7 +517,7 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("pfp_y",              & _pfp_y);
     fTree->Branch("pfp_z",              & _pfp_z);
 
-	fTree->Branch("n_primary_tracks",        & _n_primary_tracks);
+	//fTree->Branch("n_primary_tracks",        & _n_primary_tracks);
 	fTree->Branch("trk_length",              & _trk_length);
 	fTree->Branch("trk_start_x",             & _trk_start_x);
 	fTree->Branch("trk_start_y",             & _trk_start_y);
@@ -551,7 +533,7 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("trk_mean_dedx_plane2",    & _trk_mean_dedx_plane2);
 	fTree->Branch("trk_three_plane_dedx",    & _trk_three_plane_dedx);
 
-	fTree->Branch("n_primary_showers", &_n_primary_showers);
+	//fTree->Branch("n_primary_showers", &_n_primary_showers);
 	fTree->Branch("shr_length",        &_shr_length);
 	fTree->Branch("shr_open_angle",    &_shr_open_angle);
 	fTree->Branch("shr_start_x",       &_shr_start_x);
@@ -595,6 +577,18 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::fill_ptr_vector(pfp_vector, pfp_handle);
 
     lar_pandora::LArPandoraHelper::BuildPFParticleMap(pfp_vector, _pfp_map);
+
+    // Slice map
+    art::Handle<std::vector<recob::Slice>> slice_handle;
+    std::vector<art::Ptr<recob::Slice>> slice_vector;
+
+    if (!evt.getByLabel(fFlashMatchRecoLabel, slice_handle))
+        throw cet::exception("HyperonProduction::fillPandoraMaps") << "No Slice Data Products Found! :(" << std::endl;
+
+    art::fill_ptr_vector(slice_vector, slice_handle);
+
+    for (const art::Ptr<recob::Slice> &slice : slice_vector)
+        _slice_map[slice->ID()] = slice;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -679,8 +673,12 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
     if (!evt.getByLabel(fFlashMatchRecoLabel, slice_handle))
         throw cet::exception("HyperonProduction::getTrueNuSliceID") << "No Slice Data Products Found! :(" << std::endl;
 
+    if (slice_handle.isValid())
+        art::fill_ptr_vector(slice_vector, slice_handle);
+
+    _n_slices = slice_vector.size();
+
     art::FindManyP<recob::Hit> hit_assoc = art::FindManyP<recob::Hit>(slice_handle, evt, fFlashMatchRecoLabel);
-    art::fill_ptr_vector(slice_vector, slice_handle);
 
     // Now find true nu slice ID
     int true_slice_n_hits(-1);
@@ -751,6 +749,91 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
     }
 
     return hits;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
+{
+	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+		evt.getValidHandle<std::vector<recob::Slice>>(fFlashMatchRecoLabel);
+	std::vector<art::Ptr<recob::Slice>> slice_vector;
+
+	if (slice_handle.isValid())
+		art::fill_ptr_vector(slice_vector, slice_handle);
+
+	art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fFlashMatchRecoLabel);
+
+    // Should be at max one neutrino slice
+	for (const art::Ptr<recob::Slice> &slice : slice_vector)
+	{
+		// collect all PFPs associated with the current slice key
+		std::vector<art::Ptr<recob::PFParticle>> slicePFPs(slice_pfp_assoc.at(slice.key()));
+
+		for (const art::Ptr<recob::PFParticle> &slicePFP : slicePFPs)
+		{
+			const bool is_primary(slicePFP->IsPrimary());
+			const bool is_neutrino(std::abs(slicePFP->PdgCode()) == 12 || std::abs(slicePFP->PdgCode()) == 14);
+
+			if (!(is_primary && is_neutrino))
+				continue;
+
+			_flash_match_nu_slice_ID = slice.key();
+
+			return;
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getTopologicalScoreNuSliceID(art::Event const& evt)
+{
+	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+		evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+
+	std::vector<art::Ptr<recob::Slice>> slice_vector;
+
+	if (slice_handle.isValid())
+		art::fill_ptr_vector(slice_vector, slice_handle);
+
+    art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle = 
+        evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
+
+    art::FindManyP<recob::PFParticle> pfp_assoc = art::FindManyP<recob::PFParticle>(slice_handle, evt, fPandoraRecoLabel);
+    art::FindManyP<larpandoraobj::PFParticleMetadata> metadata_assn = art::FindManyP<larpandoraobj::PFParticleMetadata>(pfp_handle, evt, fPandoraRecoLabel);
+
+    double best_topological_score(-std::numeric_limits<double>::max());
+
+    for (const art::Ptr<recob::Slice> &slice : slice_vector)
+    {
+        const std::vector<art::Ptr<recob::PFParticle>> slicePFPs = pfp_assoc.at(slice.key());
+
+        for (const art::Ptr<recob::PFParticle> &pfp : slicePFPs)
+        {
+            // only topological score for the primary pfp
+            if (!pfp->IsPrimary())
+                continue;
+
+            std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfp_meta = metadata_assn.at(pfp.key());
+
+            if (pfp_meta.empty())
+                continue;
+
+            const larpandoraobj::PFParticleMetadata::PropertiesMap &pfp_properties_map(pfp_meta.at(0)->GetPropertiesMap());
+
+            if (pfp_properties_map.find("NuScore") != pfp_properties_map.end())
+            {
+                const double this_topological_score = pfp_properties_map.at("NuScore");
+
+                if (this_topological_score > best_topological_score)
+                {
+                    best_topological_score = this_topological_score;
+                    _pandora_nu_slice_ID = slice->ID();
+                }
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -887,8 +970,8 @@ void hyperon::HyperonProduction::clearTreeVariables()
     _pandora_nu_slice_ID        = -1;
     _flash_match_nu_slice_ID    = -1;
 
-	_n_primary_tracks  = 0;
-	_n_primary_showers = 0;
+	//_n_primary_tracks  = 0;
+	//_n_primary_showers = 0;
 
 	_mc_nu_pdg   = bogus::PDG;
 	_mc_nu_q2    = -1.0;
