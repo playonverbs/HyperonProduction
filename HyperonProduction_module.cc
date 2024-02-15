@@ -167,8 +167,6 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         bool fIsData;
         bool fDebug;
 
-		std::map<int, art::Ptr<simb::MCParticle>> particleMap;
-
 		std::vector<int> primary_ids;
 		std::vector<int> sigmaZeroDaughter_ids;
 		std::vector<int> lambdaDaughter_ids;
@@ -285,7 +283,6 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 void hyperon::HyperonProduction::analyze(art::Event const& evt)
 {
     // Make sure our true->reco maps are clear
-	particleMap.clear();
     _hit_to_trackID.clear();
     _trackID_to_hits.clear();
     _mc_particle_map.clear();
@@ -340,10 +337,6 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 
 			const std::vector<art::Ptr<simb::MCParticle>> g4particles =
 				util::GetAssocProductVector<simb::MCParticle>(truth, evt, fGeneratorLabel, fG4Label);
-
-			for (const art::Ptr<simb::MCParticle> &g4p : g4particles) {
-				particleMap.insert(std::make_pair(g4p->TrackId(), g4p));
-			}
 
 			buildTruthHierarchy(g4particles);
 
@@ -881,9 +874,9 @@ void hyperon::HyperonProduction::buildTruthHierarchy(const std::vector<art::Ptr<
 
 	for (size_t i_d = 0; i_d < sigmaZeroDaughter_ids.size(); i_d++)
 	{
-		if (particleMap.find(sigmaZeroDaughter_ids.at(i_d)) == particleMap.end()) continue;
+		if (_mc_particle_map.find(sigmaZeroDaughter_ids.at(i_d)) == _mc_particle_map.end()) continue;
 
-		auto p = particleMap.at(sigmaZeroDaughter_ids.at(i_d));
+		auto p = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i_d));
 
 		if (p->PdgCode() == pdg::Lambda) {
 			std::vector<int> _ids = getChildIds(p);
@@ -901,9 +894,9 @@ std::vector<int> hyperon::HyperonProduction::getChildIds(const art::Ptr<simb::MC
 	if (p->EndProcess() != "Decay" && !IsNeutron && !pdg::isKaon(p)) return _decay_ids;
 
 	for (int i_d = 0; i_d < p->NumberDaughters(); i_d++) {
-		if (particleMap.find(p->Daughter(i_d)) == particleMap.end()) continue;
+		if (_mc_particle_map.find(p->Daughter(i_d)) == _mc_particle_map.end()) continue;
 
-		art::Ptr<simb::MCParticle> daughter = particleMap.at(p->Daughter(i_d));
+		art::Ptr<simb::MCParticle> daughter = _mc_particle_map.at(p->Daughter(i_d));
 
 		if (daughter->PdgCode() > 10000) continue;
 
