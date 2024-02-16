@@ -138,14 +138,20 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void fillMCParticleHitMaps(art::Event const& evt);
         bool isEM(const art::Ptr<simb::MCParticle> &mc_particle);
         int getLeadEMTrackID(const art::Ptr<simb::MCParticle> &mc_particle);
+        void getEventMCInfo(art::Event const& evt);
         void getTrueNuSliceID(art::Event const& evt);
         std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt, 
             const art::Ptr<recob::PFParticle> &pfparticle);
         void getFlashMatchNuSliceID(art::Event const& evt);
         void getTopologicalScoreNuSliceID(art::Event const& evt);
+        void getEventRecoInfo(art::Event const& evt, const int nuSliceID);
+        void getPFPRecoInfo(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
-		void getTrackVariables(art::Ptr<recob::Track> &track);
-		void getShowerVariables(art::Ptr<recob::Shower> &shower);
+        void getBogusMCParticleVariables();
+        void getTrackVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
+        void getBogusTrackVariables();
+        void getShowerVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
+        void getBogusShowerVariables();
 		void clearTreeVariables();
 		void fillNull();
 
@@ -194,11 +200,11 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		unsigned int _n_mctruths;
 
         unsigned int _n_slices;
-        unsigned int _true_nu_slice_ID;
+        int _true_nu_slice_ID;
         double _true_nu_slice_completeness;
         double _true_nu_slice_purity;
-        unsigned int _pandora_nu_slice_ID;
-        unsigned int _flash_match_nu_slice_ID;
+        int _pandora_nu_slice_ID;
+        int _flash_match_nu_slice_ID;
         //unsigned int _n_primary_tracks;          // do we need these if we have multiple slices?
         //unsigned int _n_primary_showers;         // do we need these if we have multiple slices?
 
@@ -287,7 +293,6 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
 	fIsData(config().fIsData()),
 	fDebug(config().fDebug())
 {
-	// Call appropriate consumes<>() for any products to be retrieved by this module.
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -308,163 +313,27 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     fillPandoraMaps(evt);
     if (fDebug) std::cout << "Filling MCParticle Hit Maps..." << std::endl;
     fillMCParticleHitMaps(evt);
-    if (fDebug) std::cout << "Filling MC Slice Info..." << std::endl;
-    getTrueNuSliceID(evt);
 
     // Fill those branches!
 	_run    = evt.run();
 	_subrun = evt.subRun();
 	_event  = evt.id().event();
 
-    if (fDebug) std::cout << "Filling MC Info..." << std::endl;
-
-	// Check if this is an MC file.
-	if (!fIsData) {
-		art::ValidHandle<std::vector<simb::MCTruth>> mcTruthHandle =
-			evt.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorLabel);
-		std::vector<art::Ptr<simb::MCTruth>> mcTruthVector;
-
-		if (mcTruthHandle.isValid())
-			art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
-
-		// Fill truth information
-		
-		for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
-		{
-			_n_mctruths++;
-
-			_mc_nu_pdg   = truth->GetNeutrino().Nu().PdgCode();
-			_mc_nu_q2    = truth->GetNeutrino().QSqr();
-			_mc_nu_pos_x = truth->GetNeutrino().Nu().EndX();
-			_mc_nu_pos_y = truth->GetNeutrino().Nu().EndY();
-			_mc_nu_pos_z = truth->GetNeutrino().Nu().EndZ();
-
-			_mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
-			_mc_lepton_mom = truth->GetNeutrino().Lepton().Momentum().P();
-
-			_mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
-			_mc_mode = util::GetEventType(truth->GetNeutrino().Mode());
-
-			// look at geant4 particles
-
-			const std::vector<art::Ptr<simb::MCParticle>> g4particles =
-				util::GetAssocProductVector<simb::MCParticle>(truth, evt, fGeneratorLabel, fG4Label);
-
-			buildTruthHierarchy(g4particles);
-
-			break; // escape after first MCNeutrino
-		}
-	}
+    // Fill the MC info for the event
+    if (fDebug) std::cout << "Filling MC Event Info..." << std::endl;
+    getEventMCInfo(evt);
 
     // Find the flash matched neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting flash match slice ID..." << std::endl;
-
     getFlashMatchNuSliceID(evt);
 
     // Find the Pandora (highest topological score) neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting the highest topological score slice ID..." << std::endl;
-
     getTopologicalScoreNuSliceID(evt);
 
     // Fill the reconstructed neutrino hierarchy variables (using flash match neutrino slice)
     if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
-
-	if ((_flash_match_nu_slice_ID < 0) || (_slice_map.find(_flash_match_nu_slice_ID) == _slice_map.end()))
-	{
-		if (fDebug)
-			FNLOG("no flash match slice found");
-
-		fillNull();
-		return;
-	}
-
-	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
-		evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
-    art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fPandoraRecoLabel);
-
-	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
-		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
-	art::FindManyP<recob::Track>  pfpTrackAssoc(pfpHandle, evt, fTrackLabel);
-	art::FindManyP<recob::Shower> pfpShowerAssoc(pfpHandle, evt, fShowerLabel);
-	art::FindManyP<larpandoraobj::PFParticleMetadata>
-		pfpMetaAssoc(pfpHandle, evt, fPandoraRecoLabel);
-
-	art::ValidHandle<std::vector<recob::Hit>> hitHandle =
-		evt.getValidHandle<std::vector<recob::Hit>>(fHitLabel);
-	art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData>
-		partHitMatchAssoc(hitHandle, evt, fHitTruthAssnsLabel);
-
-	art::ValidHandle<std::vector<recob::Track>> trackHandle =
-		evt.getValidHandle<std::vector<recob::Track>>(fTrackLabel);
-
-	const std::vector<art::Ptr<recob::PFParticle>> nuSlicePFPs(slice_pfp_assoc.at(_slice_map.at(_flash_match_nu_slice_ID).key()));
-
-	for (const art::Ptr<recob::PFParticle> &nuSlicePFP : nuSlicePFPs)
-	{
-        // Is the PFP in the neutrino hierarchy?
-        // This is important, so we don't pick up the CR hypothesis output
-        const art::Ptr<recob::PFParticle> parentPFP = lar_pandora::LArPandoraHelper::GetParentPFParticle(_pfp_map, nuSlicePFP);
-
-        if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
-            continue;
-
-        // Let's just looking at primaries
-        const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nuSlicePFP);
-
-        if (generation != 2)
-            continue;
-
-		_pfp_pdg.push_back(nuSlicePFP->PdgCode());
-
-		std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfpMetas =
-			pfpMetaAssoc.at(nuSlicePFP.key());
-
-		if (!pfpMetas.empty())
-		{
-			art::Ptr<larpandoraobj::PFParticleMetadata> pfpMeta = pfpMetas.at(0);
-
-			if (pfpMeta->GetPropertiesMap().find("TrackScore")
-					!= pfpMeta->GetPropertiesMap().end())
-				_pfp_trk_shr_score.push_back(pfpMeta->GetPropertiesMap().at("TrackScore"));
-		}
-		
-        // Get PFP truth matching variables
-        if (!fIsData) 
-            getMCParticleVariables(evt, nuSlicePFP);
-
-		// Handle Tracks
-		std::vector<art::Ptr<recob::Track>> tracks = pfpTrackAssoc.at(nuSlicePFP.key());
-		art::FindManyP<recob::Hit> trackHitAssoc(trackHandle, evt, fTrackHitAssnsLabel);
-
-		if (tracks.size() == 1)
-		{
-			//_n_primary_tracks++;
-			art::Ptr<recob::Track> track = tracks.at(0);
-
-			const std::vector<art::Ptr<anab::Calorimetry>> calos =
-				util::GetAssocProductVector<anab::Calorimetry>(track, evt, fTrackLabel, fCaloLabel);
-
-			auto dedx = alg::ThreePlaneMeandEdX(track, calos);
-			
-			_trk_mean_dedx_plane0.push_back(dedx.plane0);
-			_trk_mean_dedx_plane1.push_back(dedx.plane1);
-			_trk_mean_dedx_plane2.push_back(dedx.plane2);
-			_trk_three_plane_dedx.push_back(dedx.three_plane_average);
-
-			getTrackVariables(track);
-		}
-
-		// Handle Showers
-		std::vector<art::Ptr<recob::Shower>> showers = pfpShowerAssoc.at(nuSlicePFP.key());
-
-		if (showers.size() == 1)
-		{
-			//_n_primary_showers++;
-			art::Ptr<recob::Shower> shower = showers.at(0);
-
-			getShowerVariables(shower);
-		}
-	} // end nuSlicePFPs loop
+    getEventRecoInfo(evt, _flash_match_nu_slice_ID);
 
 	fTree->Fill();
 }
@@ -665,14 +534,57 @@ int hyperon::HyperonProduction::getLeadEMTrackID(const art::Ptr<simb::MCParticle
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
+{
+	// Check if this is an MC file.
+	if (!fIsData)
+        return;
+
+	art::ValidHandle<std::vector<simb::MCTruth>> mcTruthHandle =
+        evt.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorLabel);
+    std::vector<art::Ptr<simb::MCTruth>> mcTruthVector;
+
+    if (mcTruthHandle.isValid())
+        art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
+
+    // Fill truth information	
+    for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
+	{
+        _n_mctruths++;
+
+        _mc_nu_pdg   = truth->GetNeutrino().Nu().PdgCode();
+        _mc_nu_q2    = truth->GetNeutrino().QSqr();
+        _mc_nu_pos_x = truth->GetNeutrino().Nu().EndX();
+        _mc_nu_pos_y = truth->GetNeutrino().Nu().EndY();
+        _mc_nu_pos_z = truth->GetNeutrino().Nu().EndZ();
+
+        _mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
+        _mc_lepton_mom = truth->GetNeutrino().Lepton().Momentum().P();
+
+        _mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
+        _mc_mode = util::GetEventType(truth->GetNeutrino().Mode());
+
+        // look at geant4 particles
+        const std::vector<art::Ptr<simb::MCParticle>> g4particles =
+            util::GetAssocProductVector<simb::MCParticle>(truth, evt, fGeneratorLabel, fG4Label);
+
+        buildTruthHierarchy(g4particles);
+
+        break; // escape after first MCNeutrino
+    }
+
+    if (fDebug) std::cout << "Filling MC Slice Info..." << std::endl;
+    getTrueNuSliceID(evt);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
 {
     // Get slice information
-    art::Handle<std::vector<recob::Slice>> slice_handle;
-    std::vector<art::Ptr<recob::Slice>> slice_vector;
-
-    if (!evt.getByLabel(fPandoraRecoLabel, slice_handle))
-        throw cet::exception("HyperonProduction::getTrueNuSliceID") << "No Slice Data Products Found! :(" << std::endl;
+	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+        evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+    std::vector<art::Ptr<recob::Slice>> slice_vector;   
 
     if (slice_handle.isValid())
         art::fill_ptr_vector(slice_vector, slice_handle);
@@ -876,6 +788,86 @@ void hyperon::HyperonProduction::getTopologicalScoreNuSliceID(art::Event const& 
     }
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const int nu_sliceID)
+{
+	if ((nu_sliceID < 0) || (_slice_map.find(nu_sliceID) == _slice_map.end()))
+	{
+		if (fDebug)
+			FNLOG("flash match, or pandora slice not found");
+
+		fillNull();
+		return;
+	}
+
+    // Get our products
+	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+		evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+    art::FindManyP<recob::PFParticle> slice_pfp_assoc(slice_handle, evt, fPandoraRecoLabel);
+
+	const std::vector<art::Ptr<recob::PFParticle>> nu_slice_pfps(slice_pfp_assoc.at(_slice_map.at(nu_sliceID).key()));
+
+	for (const art::Ptr<recob::PFParticle> &nu_slice_pfp : nu_slice_pfps)
+	{
+        // Is the PFP in the neutrino hierarchy?
+        // This is important, so we don't pick up the CR hypothesis output
+        const art::Ptr<recob::PFParticle> parentPFP = lar_pandora::LArPandoraHelper::GetParentPFParticle(_pfp_map, nu_slice_pfp);
+
+        if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
+            continue;
+
+        // Let's just looking at primaries
+        const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nu_slice_pfp);
+
+        if (generation != 2)
+            continue;
+
+        // Get PFP reco info
+        getPFPRecoInfo(evt, nu_slice_pfp);
+
+        // Get PFP truth matching variables
+        if (!fIsData) 
+            getMCParticleVariables(evt, nu_slice_pfp);
+        else
+            getBogusMCParticleVariables();
+
+		// Handle Tracks
+		getTrackVariables(evt, nu_slice_pfp);
+
+		// Handle Showers
+        getShowerVariables(evt, nu_slice_pfp);
+
+	} // end nu_slice_pfps loop
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getPFPRecoInfo(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
+{
+	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
+		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
+
+	art::FindManyP<larpandoraobj::PFParticleMetadata>
+		pfpMetaAssoc(pfpHandle, evt, fPandoraRecoLabel);
+
+    _pfp_pdg.push_back(pfparticle->PdgCode());
+
+    std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfp_metas =
+        pfpMetaAssoc.at(pfparticle.key());
+
+    if ((!pfp_metas.empty()) && (pfp_metas.at(0)->GetPropertiesMap().find("TrackScore") != 
+        pfp_metas.at(0)->GetPropertiesMap().end()))
+    {
+        _pfp_trk_shr_score.push_back(pfp_metas.at(0)->GetPropertiesMap().at("TrackScore"));
+    }
+    else
+    {
+        _pfp_trk_shr_score.push_back(bogus::DOUBLE);
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
@@ -932,26 +924,48 @@ void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, c
 	}
     else
     {
-        // fill with bogus values...
-        _pfp_has_truth.push_back(false);
-        _pfp_trackID.push_back(-1);
-		_pfp_true_pdg.push_back(-1);
-		_pfp_true_energy.push_back(bogus::DOUBLE);
-		_pfp_true_ke.push_back(bogus::DOUBLE);
-		_pfp_true_px.push_back(bogus::DOUBLE);
-		_pfp_true_py.push_back(bogus::DOUBLE);
-		_pfp_true_pz.push_back(bogus::DOUBLE);
-		_pfp_true_length.push_back(bogus::DOUBLE);
-		_pfp_true_origin.push_back(-1);
-		_pfp_completeness.push_back(bogus::DOUBLE);
-		_pfp_purity.push_back(bogus::DOUBLE);
+        getBogusMCParticleVariables();
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void hyperon::HyperonProduction::getTrackVariables(art::Ptr<recob::Track> &track)
+void hyperon::HyperonProduction::getBogusMCParticleVariables()
 {
+    // fill with bogus values...
+    _pfp_has_truth.push_back(false);
+    _pfp_trackID.push_back(-1);
+    _pfp_true_pdg.push_back(-1);
+    _pfp_true_energy.push_back(bogus::DOUBLE);
+    _pfp_true_ke.push_back(bogus::DOUBLE);
+    _pfp_true_px.push_back(bogus::DOUBLE);
+    _pfp_true_py.push_back(bogus::DOUBLE);
+    _pfp_true_pz.push_back(bogus::DOUBLE);
+    _pfp_true_length.push_back(bogus::DOUBLE);
+    _pfp_true_origin.push_back(-1);
+    _pfp_completeness.push_back(bogus::DOUBLE);
+    _pfp_purity.push_back(bogus::DOUBLE);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getTrackVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
+{
+	art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle =
+		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
+
+	art::FindManyP<recob::Track>  pfp_track_assoc(pfp_handle, evt, fTrackLabel);
+
+    std::vector<art::Ptr<recob::Track>> tracks = pfp_track_assoc.at(pfparticle.key());
+
+    if (tracks.size() == 0)
+    {
+        getBogusTrackVariables();
+        return;
+    }
+
+    art::Ptr<recob::Track> track = tracks.at(0);
+
 	// TODO: apply SCE correction for points.
 	_trk_length.push_back(track->Length());
 	_trk_start_x.push_back(track->Start().X());
@@ -963,38 +977,89 @@ void hyperon::HyperonProduction::getTrackVariables(art::Ptr<recob::Track> &track
 	_trk_dir_x.push_back(track->StartDirection().X());
 	_trk_dir_y.push_back(track->StartDirection().Y());
 	_trk_dir_z.push_back(track->StartDirection().Z());
+
+    // Calorimetry
+    const std::vector<art::Ptr<anab::Calorimetry>> calos =
+        util::GetAssocProductVector<anab::Calorimetry>(track, evt, fTrackLabel, fCaloLabel);
+
+    auto dedx = alg::ThreePlaneMeandEdX(track, calos);
+			
+    _trk_mean_dedx_plane0.push_back(dedx.plane0);
+    _trk_mean_dedx_plane1.push_back(dedx.plane1);
+    _trk_mean_dedx_plane2.push_back(dedx.plane2);
+    _trk_three_plane_dedx.push_back(dedx.three_plane_average);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void hyperon::HyperonProduction::getShowerVariables(art::Ptr<recob::Shower> &shower)
+void hyperon::HyperonProduction::getBogusTrackVariables()
+{
+	_trk_length.push_back(bogus::DOUBLE);
+	_trk_start_x.push_back(bogus::DOUBLE); 
+	_trk_start_y.push_back(bogus::DOUBLE); 
+	_trk_start_z.push_back(bogus::DOUBLE); 
+	_trk_end_x.push_back(bogus::DOUBLE); 
+	_trk_end_y.push_back(bogus::DOUBLE); 
+	_trk_end_z.push_back(bogus::DOUBLE); 
+	_trk_dir_x.push_back(bogus::DOUBLE); 
+	_trk_dir_y.push_back(bogus::DOUBLE); 
+	_trk_dir_z.push_back(bogus::DOUBLE); 
+    _trk_mean_dedx_plane0.push_back(bogus::DOUBLE); 
+    _trk_mean_dedx_plane1.push_back(bogus::DOUBLE); 
+    _trk_mean_dedx_plane2.push_back(bogus::DOUBLE); 
+    _trk_three_plane_dedx.push_back(bogus::DOUBLE); 
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
 {	
+	art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle =
+		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
+
+	art::FindManyP<recob::Shower>  pfp_shower_assoc(pfp_handle, evt, fShowerLabel);
+
+    std::vector<art::Ptr<recob::Shower>> showers = pfp_shower_assoc.at(pfparticle.key());
+
+    if (showers.size() == 0)
+    {
+        getBogusShowerVariables();
+        return;
+    }
+
+    art::Ptr<recob::Shower> shower = showers.at(0);
+
 	if (shower->has_length())
-	{
 		_shr_length.push_back(shower->Length());
-	}
 	else
-	{
 		_shr_length.push_back(bogus::LENGTH);
-	}
 
 	if (shower->has_open_angle())
-	{
 		_shr_open_angle.push_back(shower->OpenAngle());
-	}
 	else
-	{
 		_shr_open_angle.push_back(bogus::ANGLE);
-	}
 
 	// TODO: apply SCE correction for start point.
 	_shr_start_x.push_back(shower->ShowerStart().X());
 	_shr_start_y.push_back(shower->ShowerStart().Y());
 	_shr_start_z.push_back(shower->ShowerStart().Z());
-
 	_shr_dir_x.push_back(shower->Direction().X());
 	_shr_dir_y.push_back(shower->Direction().Y());
 	_shr_dir_z.push_back(shower->Direction().Z());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getBogusShowerVariables()
+{	
+    _shr_length.push_back(bogus::LENGTH);
+    _shr_open_angle.push_back(bogus::ANGLE);
+	_shr_start_x.push_back(bogus::DOUBLE);
+	_shr_start_y.push_back(bogus::DOUBLE);
+	_shr_start_z.push_back(bogus::DOUBLE);
+	_shr_dir_x.push_back(bogus::DOUBLE);
+	_shr_dir_y.push_back(bogus::DOUBLE);
+	_shr_dir_z.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
