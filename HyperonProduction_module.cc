@@ -345,16 +345,20 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     // Find the flash matched neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting flash match slice ID..." << std::endl;
     getFlashMatchNuSliceID(evt);
+    std::cout << "_flash_match_nu_slice_ID: " << _flash_match_nu_slice_ID << std::endl;
 
     // Find the Pandora (highest topological score) neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting the highest topological score slice ID..." << std::endl;
     getTopologicalScoreNuSliceID(evt);
+    std::cout << "_pandora_nu_slice_ID: " << _pandora_nu_slice_ID << std::endl;
 
     // Fill the reconstructed neutrino hierarchy variables (using flash match neutrino slice)
     if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
     getEventRecoInfo(evt, _flash_match_nu_slice_ID);
 
+    std::cout << "11111111111111" << std::endl;
 	fTree->Fill();
+    std::cout << "22222222222222" << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -384,20 +388,20 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("mc_nu_pos_z",                 &_mc_nu_pos_z);
 	fTree->Branch("mc_lepton_pdg",               &_mc_lepton_pdg);
 	fTree->Branch("mc_lepton_mom",               &_mc_lepton_mom);
-    fTree->Branch("true_nu_slice_ID",            & _true_nu_slice_ID);
-    fTree->Branch("true_nu_slice_completeness",  & _true_nu_slice_completeness);
-    fTree->Branch("true_nu_slice_purity",        & _true_nu_slice_purity);
-	fTree->Branch("n_slices",                    & _n_slices);
+    fTree->Branch("true_nu_slice_ID",            &_true_nu_slice_ID);
+    fTree->Branch("true_nu_slice_completeness",  &_true_nu_slice_completeness);
+    fTree->Branch("true_nu_slice_purity",        &_true_nu_slice_purity);
+	fTree->Branch("n_slices",                    &_n_slices);
 
     /////////////////////////////
     // FlashMatch Slice Info
     /////////////////////////////
-    fTree->Branch("flash_match_nu_slice_ID",     & _flash_match_nu_slice_ID);
+    fTree->Branch("flash_match_nu_slice_ID",     &_flash_match_nu_slice_ID);
 
     /////////////////////////////
     // Pandora Slice Info
     /////////////////////////////
-    fTree->Branch("pandora_nu_slice_ID",         & _pandora_nu_slice_ID);
+    fTree->Branch("pandora_nu_slice_ID",         &_pandora_nu_slice_ID);
 
     /////////////////////////////
     // PFParticle Variables
@@ -481,11 +485,13 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::Handle<std::vector<simb::MCParticle>> mc_particle_handle;
     std::vector<art::Ptr<simb::MCParticle>> mc_particle_vector;
 
-    if (!evt.getByLabel(fGeneratorLabel, mc_particle_handle))
+    if (!evt.getByLabel(fG4Label, mc_particle_handle))
         throw cet::exception("HyperonProduction::fillPandoraMaps") << "No MCParticle Data Products Found! :(" << std::endl;
 
     art::fill_ptr_vector(mc_particle_vector, mc_particle_handle);
     lar_pandora::LArPandoraHelper::BuildMCParticleMap(mc_particle_vector, _mc_particle_map);
+
+    std::cout << "mc_particle_vector.size(): " << mc_particle_vector.size() << std::endl;
 
     // PFParticle map
     art::Handle<std::vector<recob::PFParticle>> pfp_handle;
@@ -498,6 +504,8 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
 
     lar_pandora::LArPandoraHelper::BuildPFParticleMap(pfp_vector, _pfp_map);
 
+    std::cout << "pfp_vector.size(): " << pfp_vector.size() << std::endl;
+
     // Slice map
     art::Handle<std::vector<recob::Slice>> slice_handle;
     std::vector<art::Ptr<recob::Slice>> slice_vector;
@@ -509,6 +517,8 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
 
     for (const art::Ptr<recob::Slice> &slice : slice_vector)
         _slice_map[slice->ID()] = slice;
+
+    std::cout << "slice_vector: " << slice_vector.size() << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -550,6 +560,9 @@ void hyperon::HyperonProduction::fillMCParticleHitMaps(art::Event const& evt)
             _trackID_to_hits[trackID].push_back(hit.key());
         }
     }
+
+    std::cout << "_hit_to_trackID.size(): " << _hit_to_trackID.size() << std::endl;
+    std::cout << "_trackID_to_hits.size(): " << _trackID_to_hits.size() << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -587,8 +600,10 @@ int hyperon::HyperonProduction::getLeadEMTrackID(const art::Ptr<simb::MCParticle
 void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 {
 	// Check if this is an MC file.
-	if (!fIsData)
+	if (fIsData)
         return;
+
+    std::cout << "fIsData: " << fIsData << std::endl;
 
 	art::ValidHandle<std::vector<simb::MCTruth>> mcTruthHandle =
         evt.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorLabel);
@@ -596,6 +611,8 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 
     if (mcTruthHandle.isValid())
         art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
+
+    std::cout << "mcTruthVector.size(): " << mcTruthVector.size() << std::endl;
 
     // Fill truth information	
     for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
@@ -625,6 +642,8 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 
     if (fDebug) std::cout << "Filling MC Slice Info..." << std::endl;
     getTrueNuSliceID(evt);
+
+    std::cout << "_mc_lepton_pdg: " << _mc_lepton_pdg << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -848,6 +867,8 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 		if (fDebug)
 			FNLOG("flash match, or pandora slice not found");
 
+        std::cout << "HEY HEY HEY HEY HEY" << std::endl;
+
 		fillNull();
 		return;
 	}
@@ -859,6 +880,8 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
 	const std::vector<art::Ptr<recob::PFParticle>> nu_slice_pfps(slice_pfp_assoc.at(_slice_map.at(nu_sliceID).key()));
 
+    std::cout << "nu_slice_pfps.size(): " << nu_slice_pfps.size() << std::endl;
+
 	for (const art::Ptr<recob::PFParticle> &nu_slice_pfp : nu_slice_pfps)
 	{
         // Is the PFP in the neutrino hierarchy?
@@ -867,6 +890,8 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
         if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
             continue;
+
+        std::cout << "we have a neutrino child!" << std::endl;
 
         // Let's just looking at primaries
         const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nu_slice_pfp);
@@ -1133,7 +1158,7 @@ void hyperon::HyperonProduction::clearTreeVariables()
     /////////////////////////////
     // Event MC Info
     /////////////////////////////
-	_n_mctruths                 = 0;
+	_n_mctruths  = 0;
 	_mc_nu_pdg   = bogus::PDG;
 	_mc_nu_q2    = bogus::DOUBLE;
 	_mc_nu_pos_x = bogus::POS;
@@ -1229,6 +1254,8 @@ void hyperon::HyperonProduction::clearTreeVariables()
 // products fails.
 void hyperon::HyperonProduction::fillNull()
 {
+    std::cout << "FILLING NULL!!!" << std::endl;
+
 	clearTreeVariables();
 
 	fTree->Fill();
