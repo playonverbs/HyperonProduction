@@ -32,6 +32,7 @@
 #include "lardataobj/RecoBase/Shower.h"
 #include "lardataobj/RecoBase/Slice.h"
 #include "lardataobj/RecoBase/Track.h"
+#include "lardataobj/RecoBase/Vertex.h"
 
 // larpandora
 #include "larpandora/LArPandoraInterface/LArPandoraHelper.h"
@@ -238,9 +239,9 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         // Reco pfp stuff
 		std::vector<int>    _pfp_pdg;
 		std::vector<double> _pfp_trk_shr_score;
-        std::vector<double> _pfp_x; // TODO: Set this!
-        std::vector<double> _pfp_y; // TODO: Set this! 
-        std::vector<double> _pfp_z; // TODO: Set this! 
+        std::vector<double> _pfp_x;
+        std::vector<double> _pfp_y;
+        std::vector<double> _pfp_z;
 
         /////////////////////////////
 		// Track Variables
@@ -345,20 +346,16 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     // Find the flash matched neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting flash match slice ID..." << std::endl;
     getFlashMatchNuSliceID(evt);
-    std::cout << "_flash_match_nu_slice_ID: " << _flash_match_nu_slice_ID << std::endl;
 
     // Find the Pandora (highest topological score) neutrino slice (if one exists)
     if (fDebug) std::cout << "Getting the highest topological score slice ID..." << std::endl;
     getTopologicalScoreNuSliceID(evt);
-    std::cout << "_pandora_nu_slice_ID: " << _pandora_nu_slice_ID << std::endl;
 
     // Fill the reconstructed neutrino hierarchy variables (using flash match neutrino slice)
     if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
     getEventRecoInfo(evt, _flash_match_nu_slice_ID);
 
-    std::cout << "11111111111111" << std::endl;
 	fTree->Fill();
-    std::cout << "22222222222222" << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -491,8 +488,6 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::fill_ptr_vector(mc_particle_vector, mc_particle_handle);
     lar_pandora::LArPandoraHelper::BuildMCParticleMap(mc_particle_vector, _mc_particle_map);
 
-    std::cout << "mc_particle_vector.size(): " << mc_particle_vector.size() << std::endl;
-
     // PFParticle map
     art::Handle<std::vector<recob::PFParticle>> pfp_handle;
     std::vector<art::Ptr<recob::PFParticle>> pfp_vector;
@@ -503,8 +498,6 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
     art::fill_ptr_vector(pfp_vector, pfp_handle);
 
     lar_pandora::LArPandoraHelper::BuildPFParticleMap(pfp_vector, _pfp_map);
-
-    std::cout << "pfp_vector.size(): " << pfp_vector.size() << std::endl;
 
     // Slice map
     art::Handle<std::vector<recob::Slice>> slice_handle;
@@ -517,8 +510,6 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
 
     for (const art::Ptr<recob::Slice> &slice : slice_vector)
         _slice_map[slice->ID()] = slice;
-
-    std::cout << "slice_vector: " << slice_vector.size() << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -560,9 +551,6 @@ void hyperon::HyperonProduction::fillMCParticleHitMaps(art::Event const& evt)
             _trackID_to_hits[trackID].push_back(hit.key());
         }
     }
-
-    std::cout << "_hit_to_trackID.size(): " << _hit_to_trackID.size() << std::endl;
-    std::cout << "_trackID_to_hits.size(): " << _trackID_to_hits.size() << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -603,16 +591,12 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 	if (fIsData)
         return;
 
-    std::cout << "fIsData: " << fIsData << std::endl;
-
 	art::ValidHandle<std::vector<simb::MCTruth>> mcTruthHandle =
         evt.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorLabel);
     std::vector<art::Ptr<simb::MCTruth>> mcTruthVector;
 
     if (mcTruthHandle.isValid())
         art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
-
-    std::cout << "mcTruthVector.size(): " << mcTruthVector.size() << std::endl;
 
     // Fill truth information	
     for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
@@ -642,8 +626,6 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 
     if (fDebug) std::cout << "Filling MC Slice Info..." << std::endl;
     getTrueNuSliceID(evt);
-
-    std::cout << "_mc_lepton_pdg: " << _mc_lepton_pdg << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -867,8 +849,6 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 		if (fDebug)
 			FNLOG("flash match, or pandora slice not found");
 
-        std::cout << "HEY HEY HEY HEY HEY" << std::endl;
-
 		fillNull();
 		return;
 	}
@@ -880,8 +860,6 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
 	const std::vector<art::Ptr<recob::PFParticle>> nu_slice_pfps(slice_pfp_assoc.at(_slice_map.at(nu_sliceID).key()));
 
-    std::cout << "nu_slice_pfps.size(): " << nu_slice_pfps.size() << std::endl;
-
 	for (const art::Ptr<recob::PFParticle> &nu_slice_pfp : nu_slice_pfps)
 	{
         // Is the PFP in the neutrino hierarchy?
@@ -890,8 +868,6 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
         if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
             continue;
-
-        std::cout << "we have a neutrino child!" << std::endl;
 
         // Let's just looking at primaries
         const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nu_slice_pfp);
@@ -921,16 +897,18 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
 void hyperon::HyperonProduction::getPFPRecoInfo(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
 {
-	art::ValidHandle<std::vector<recob::PFParticle>> pfpHandle =
+    // Pandora 'PDG'
+    _pfp_pdg.push_back(pfparticle->PdgCode());
+
+    // Track/shower score
+	art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle =
 		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
 
 	art::FindManyP<larpandoraobj::PFParticleMetadata>
-		pfpMetaAssoc(pfpHandle, evt, fPandoraRecoLabel);
-
-    _pfp_pdg.push_back(pfparticle->PdgCode());
+		pfp_meta_assoc(pfp_handle, evt, fPandoraRecoLabel);
 
     std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfp_metas =
-        pfpMetaAssoc.at(pfparticle.key());
+        pfp_meta_assoc.at(pfparticle.key());
 
     if ((!pfp_metas.empty()) && (pfp_metas.at(0)->GetPropertiesMap().find("TrackScore") != 
         pfp_metas.at(0)->GetPropertiesMap().end()))
@@ -941,6 +919,29 @@ void hyperon::HyperonProduction::getPFPRecoInfo(art::Event const& evt, const art
     {
         _pfp_trk_shr_score.push_back(bogus::DOUBLE);
     }
+
+    // Vertex
+	art::FindManyP<recob::Vertex>
+		pfp_vertex_assoc(pfp_handle, evt, fPandoraRecoLabel);
+
+    std::vector<art::Ptr<recob::Vertex>> pfp_vertices =
+        pfp_vertex_assoc.at(pfparticle.key());
+
+    if (!pfp_vertices.empty())
+    {
+        const art::Ptr<recob::Vertex> &vertex = pfp_vertices.at(0);
+
+        _pfp_x.push_back(vertex->position().X());
+        _pfp_y.push_back(vertex->position().Y());
+        _pfp_z.push_back(vertex->position().Z());
+    }
+    else
+    {
+        _pfp_x.push_back(bogus::DOUBLE);
+        _pfp_y.push_back(bogus::DOUBLE);
+        _pfp_z.push_back(bogus::DOUBLE);
+    }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1063,6 +1064,8 @@ void hyperon::HyperonProduction::getTrackVariables(art::Event const& evt, const 
     _trk_mean_dedx_plane1.push_back(dedx.plane1);
     _trk_mean_dedx_plane2.push_back(dedx.plane2);
     _trk_three_plane_dedx.push_back(dedx.three_plane_average);
+
+    _trk_llrpid.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1083,6 +1086,7 @@ void hyperon::HyperonProduction::getBogusTrackVariables()
     _trk_mean_dedx_plane1.push_back(bogus::DOUBLE); 
     _trk_mean_dedx_plane2.push_back(bogus::DOUBLE); 
     _trk_three_plane_dedx.push_back(bogus::DOUBLE); 
+    _trk_llrpid.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1121,6 +1125,12 @@ void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const
 	_shr_dir_x.push_back(shower->Direction().X());
 	_shr_dir_y.push_back(shower->Direction().Y());
 	_shr_dir_z.push_back(shower->Direction().Z());
+    _shr_energy_plane0.push_back(bogus::DOUBLE);
+    _shr_energy_plane1.push_back(bogus::DOUBLE);
+    _shr_energy_plane2.push_back(bogus::DOUBLE);
+    _shr_dedx_plane0.push_back(bogus::DOUBLE);
+    _shr_dedx_plane1.push_back(bogus::DOUBLE);
+    _shr_dedx_plane2.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1135,6 +1145,12 @@ void hyperon::HyperonProduction::getBogusShowerVariables()
 	_shr_dir_x.push_back(bogus::DOUBLE);
 	_shr_dir_y.push_back(bogus::DOUBLE);
 	_shr_dir_z.push_back(bogus::DOUBLE);
+    _shr_energy_plane0.push_back(bogus::DOUBLE);
+    _shr_energy_plane1.push_back(bogus::DOUBLE);
+    _shr_energy_plane2.push_back(bogus::DOUBLE);
+    _shr_dedx_plane0.push_back(bogus::DOUBLE);
+    _shr_dedx_plane1.push_back(bogus::DOUBLE);
+    _shr_dedx_plane2.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1254,8 +1270,6 @@ void hyperon::HyperonProduction::clearTreeVariables()
 // products fails.
 void hyperon::HyperonProduction::fillNull()
 {
-    std::cout << "FILLING NULL!!!" << std::endl;
-
 	clearTreeVariables();
 
 	fTree->Fill();
