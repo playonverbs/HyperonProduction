@@ -15,7 +15,7 @@
 #include "art/Framework/Principal/SubRun.h"
 #include "art/Framework/Services/Optional/TFileDirectory.h"
 #include "art/Framework/Services/Optional/TFileService.h"
-#include "canvas/Persistency/Common/FindMany.h"				
+#include "canvas/Persistency/Common/FindMany.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
 #include "cetlib_except/exception.h"
@@ -141,7 +141,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         int getLeadEMTrackID(const art::Ptr<simb::MCParticle> &mc_particle);
         void getEventMCInfo(art::Event const& evt);
         void getTrueNuSliceID(art::Event const& evt);
-        std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt, 
+        std::vector<art::Ptr<recob::Hit>> collectHitsFromClusters(art::Event const& evt,
             const art::Ptr<recob::PFParticle> &pfparticle);
         void getFlashMatchNuSliceID(art::Event const& evt);
         void getTopologicalScoreNuSliceID(art::Event const& evt);
@@ -260,7 +260,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
 		std::vector<double> _trk_mean_dedx_plane1;
 		std::vector<double> _trk_mean_dedx_plane2;
 		std::vector<double> _trk_three_plane_dedx;
-        std::vector<double> _trk_llrpid; // TODO: Set this! 
+        std::vector<double> _trk_llrpid; // TODO: Set this!
 
         /////////////////////////////
 		// Shower Variables
@@ -365,16 +365,16 @@ void hyperon::HyperonProduction::beginJob()
 	art::ServiceHandle<art::TFileService> tfs;
 	fTree = tfs->make<TTree>("OutputTree", "Output TTree");
 
-    /////////////////////////////
-    // Event ID
-    /////////////////////////////
+	/////////////////////////////
+	// Event ID
+	/////////////////////////////
 	fTree->Branch("run",    &_run);
 	fTree->Branch("subrun", &_subrun);
 	fTree->Branch("event",  &_event);
 
-    /////////////////////////////
-    // Event MC Info
-    /////////////////////////////
+	/////////////////////////////
+	// Event MC Info
+	/////////////////////////////
 	fTree->Branch("n_mctruths",                  &_n_mctruths);
 	fTree->Branch("mc_nu_pdg",                   &_mc_nu_pdg);
 	fTree->Branch("mc_nu_q2",                    &_mc_nu_q2);
@@ -385,81 +385,81 @@ void hyperon::HyperonProduction::beginJob()
 	fTree->Branch("mc_nu_pos_z",                 &_mc_nu_pos_z);
 	fTree->Branch("mc_lepton_pdg",               &_mc_lepton_pdg);
 	fTree->Branch("mc_lepton_mom",               &_mc_lepton_mom);
-    fTree->Branch("true_nu_slice_ID",            &_true_nu_slice_ID);
-    fTree->Branch("true_nu_slice_completeness",  &_true_nu_slice_completeness);
-    fTree->Branch("true_nu_slice_purity",        &_true_nu_slice_purity);
+	fTree->Branch("true_nu_slice_ID",            &_true_nu_slice_ID);
+	fTree->Branch("true_nu_slice_completeness",  &_true_nu_slice_completeness);
+	fTree->Branch("true_nu_slice_purity",        &_true_nu_slice_purity);
 	fTree->Branch("n_slices",                    &_n_slices);
 
-    /////////////////////////////
-    // FlashMatch Slice Info
-    /////////////////////////////
-    fTree->Branch("flash_match_nu_slice_ID",     &_flash_match_nu_slice_ID);
+	/////////////////////////////
+	// FlashMatch Slice Info
+	/////////////////////////////
+	fTree->Branch("flash_match_nu_slice_ID",     &_flash_match_nu_slice_ID);
 
-    /////////////////////////////
-    // Pandora Slice Info
-    /////////////////////////////
-    fTree->Branch("pandora_nu_slice_ID",         &_pandora_nu_slice_ID);
+	/////////////////////////////
+	// Pandora Slice Info
+	/////////////////////////////
+	fTree->Branch("pandora_nu_slice_ID",         &_pandora_nu_slice_ID);
 
-    /////////////////////////////
-    // PFParticle Variables
-    /////////////////////////////
-    // True stuff
-    fTree->Branch("pfp_purity",        & _pfp_purity);
-	fTree->Branch("pfp_completeness",  & _pfp_completeness);
-    fTree->Branch("pfp_has_truth",     & _pfp_has_truth);
-    fTree->Branch("pfp_trackID",       & _pfp_trackID);
-    fTree->Branch("pfp_true_pdg",      & _pfp_true_pdg);
-	fTree->Branch("pfp_true_energy",   & _pfp_true_energy);
-    fTree->Branch("pfp_true_ke",       & _pfp_true_ke);
-	fTree->Branch("pfp_true_px",       & _pfp_true_px);
-	fTree->Branch("pfp_true_py",       & _pfp_true_py);
-	fTree->Branch("pfp_true_pz",       & _pfp_true_pz);
-	fTree->Branch("pfp_true_length",   & _pfp_true_length);
-	fTree->Branch("pfp_true_origin",   & _pfp_true_origin);
+	/////////////////////////////
+	// PFParticle Variables
+	/////////////////////////////
+	// True stuff
+	fTree->Branch("pfp_purity",        &_pfp_purity);
+	fTree->Branch("pfp_completeness",  &_pfp_completeness);
+	fTree->Branch("pfp_has_truth",     &_pfp_has_truth);
+	fTree->Branch("pfp_trackID",       &_pfp_trackID);
+	fTree->Branch("pfp_true_pdg",      &_pfp_true_pdg);
+	fTree->Branch("pfp_true_energy",   &_pfp_true_energy);
+	fTree->Branch("pfp_true_ke",       &_pfp_true_ke);
+	fTree->Branch("pfp_true_px",       &_pfp_true_px);
+	fTree->Branch("pfp_true_py",       &_pfp_true_py);
+	fTree->Branch("pfp_true_pz",       &_pfp_true_pz);
+	fTree->Branch("pfp_true_length",   &_pfp_true_length);
+	fTree->Branch("pfp_true_origin",   &_pfp_true_origin);
 
-    // Reco pfp stuff
-    fTree->Branch("pfp_pdg",            & _pfp_pdg);
-    fTree->Branch("pfp_trk_shr_score",  & _pfp_trk_shr_score);
-    fTree->Branch("pfp_x",              & _pfp_x);
-    fTree->Branch("pfp_y",              & _pfp_y);
-    fTree->Branch("pfp_z",              & _pfp_z);
+	// Reco pfp stuff
+	fTree->Branch("pfp_pdg",            &_pfp_pdg);
+	fTree->Branch("pfp_trk_shr_score",  &_pfp_trk_shr_score);
+	fTree->Branch("pfp_x",              &_pfp_x);
+	fTree->Branch("pfp_y",              &_pfp_y);
+	fTree->Branch("pfp_z",              &_pfp_z);
 
-    /////////////////////////////
-    // Track Variables
-    /////////////////////////////
-	fTree->Branch("trk_length",              & _trk_length);
-	fTree->Branch("trk_start_x",             & _trk_start_x);
-	fTree->Branch("trk_start_y",             & _trk_start_y);
-	fTree->Branch("trk_start_z",             & _trk_start_z);
-	fTree->Branch("trk_end_x",               & _trk_end_x);
-	fTree->Branch("trk_end_y",               & _trk_end_y);
-	fTree->Branch("trk_end_z",               & _trk_end_z);
-	fTree->Branch("trk_dir_x",               & _trk_dir_x);
-	fTree->Branch("trk_dir_y",               & _trk_dir_y);
-	fTree->Branch("trk_dir_z",               & _trk_dir_z);
-	fTree->Branch("trk_mean_dedx_plane0",    & _trk_mean_dedx_plane0);
-	fTree->Branch("trk_mean_dedx_plane1",    & _trk_mean_dedx_plane1);
-	fTree->Branch("trk_mean_dedx_plane2",    & _trk_mean_dedx_plane2);
-	fTree->Branch("trk_three_plane_dedx",    & _trk_three_plane_dedx);
-    fTree->Branch("trk_llrpid",              & _trk_llrpid);
+	/////////////////////////////
+	// Track Variables
+	/////////////////////////////
+	fTree->Branch("trk_length",              &_trk_length);
+	fTree->Branch("trk_start_x",             &_trk_start_x);
+	fTree->Branch("trk_start_y",             &_trk_start_y);
+	fTree->Branch("trk_start_z",             &_trk_start_z);
+	fTree->Branch("trk_end_x",               &_trk_end_x);
+	fTree->Branch("trk_end_y",               &_trk_end_y);
+	fTree->Branch("trk_end_z",               &_trk_end_z);
+	fTree->Branch("trk_dir_x",               &_trk_dir_x);
+	fTree->Branch("trk_dir_y",               &_trk_dir_y);
+	fTree->Branch("trk_dir_z",               &_trk_dir_z);
+	fTree->Branch("trk_mean_dedx_plane0",    &_trk_mean_dedx_plane0);
+	fTree->Branch("trk_mean_dedx_plane1",    &_trk_mean_dedx_plane1);
+	fTree->Branch("trk_mean_dedx_plane2",    &_trk_mean_dedx_plane2);
+	fTree->Branch("trk_three_plane_dedx",    &_trk_three_plane_dedx);
+	fTree->Branch("trk_llrpid",              &_trk_llrpid);
 
-    /////////////////////////////
-    // Shower Variables
-    /////////////////////////////
-	fTree->Branch("shr_length",         & _shr_length);
-	fTree->Branch("shr_open_angle",     & _shr_open_angle);
-	fTree->Branch("shr_start_x",        & _shr_start_x);
-	fTree->Branch("shr_start_y",        & _shr_start_y);
-	fTree->Branch("shr_start_z",        & _shr_start_z);
-	fTree->Branch("shr_dir_x",          & _shr_dir_x);
-	fTree->Branch("shr_dir_y",          & _shr_dir_y);
-	fTree->Branch("shr_dir_z",          & _shr_dir_z);
-    fTree->Branch("shr_energy_plane0",  & _shr_energy_plane0);
-    fTree->Branch("shr_energy_plane1",  & _shr_energy_plane1);
-    fTree->Branch("shr_energy_plane2",  & _shr_energy_plane2);
-    fTree->Branch("shr_dedx_plane0",    & _shr_dedx_plane0);
-    fTree->Branch("shr_dedx_plane1",    & _shr_dedx_plane1);
-    fTree->Branch("shr_dedx_plane2",    & _shr_dedx_plane2);
+	/////////////////////////////
+	// Shower Variables
+	/////////////////////////////
+	fTree->Branch("shr_length",         &_shr_length);
+	fTree->Branch("shr_open_angle",     &_shr_open_angle);
+	fTree->Branch("shr_start_x",        &_shr_start_x);
+	fTree->Branch("shr_start_y",        &_shr_start_y);
+	fTree->Branch("shr_start_z",        &_shr_start_z);
+	fTree->Branch("shr_dir_x",          &_shr_dir_x);
+	fTree->Branch("shr_dir_y",          &_shr_dir_y);
+	fTree->Branch("shr_dir_z",          &_shr_dir_z);
+	fTree->Branch("shr_energy_plane0",  &_shr_energy_plane0);
+	fTree->Branch("shr_energy_plane1",  &_shr_energy_plane1);
+	fTree->Branch("shr_energy_plane2",  &_shr_energy_plane2);
+	fTree->Branch("shr_dedx_plane0",    &_shr_dedx_plane0);
+	fTree->Branch("shr_dedx_plane1",    &_shr_dedx_plane1);
+	fTree->Branch("shr_dedx_plane2",    &_shr_dedx_plane2);
 
 	//fTree->Branch("n_primary_tracks",        & _n_primary_tracks);
 	//fTree->Branch("n_primary_showers", &_n_primary_showers);
@@ -526,7 +526,7 @@ void hyperon::HyperonProduction::fillMCParticleHitMaps(art::Event const& evt)
     art::fill_ptr_vector(hit_vector, hit_handle);
 
     // Get backtracker info
-    art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData> assoc_mc_particle = 
+    art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData> assoc_mc_particle =
         art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData>(hit_handle, evt, fHitTruthAssnsLabel);
 
     // Truth match
@@ -598,7 +598,7 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
     if (mcTruthHandle.isValid())
         art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
 
-    // Fill truth information	
+    // Fill truth information
     for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
 	{
         _n_mctruths++;
@@ -635,7 +635,7 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
     // Get slice information
 	art::ValidHandle<std::vector<recob::Slice>> slice_handle =
         evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
-    std::vector<art::Ptr<recob::Slice>> slice_vector;   
+    std::vector<art::Ptr<recob::Slice>> slice_vector;
 
     if (slice_handle.isValid())
         art::fill_ptr_vector(slice_vector, slice_handle);
@@ -686,7 +686,7 @@ void hyperon::HyperonProduction::getTrueNuSliceID(art::Event const& evt)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClusters(art::Event const& evt, 
+std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClusters(art::Event const& evt,
     const art::Ptr<recob::PFParticle> &pfparticle)
 {
     std::vector<art::Ptr<recob::Hit>> hits;
@@ -698,7 +698,7 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
 
     art::Handle<std::vector<recob::Cluster>> cluster_handle;
 
-    if (!evt.getByLabel(fPandoraRecoLabel, cluster_handle)) 
+    if (!evt.getByLabel(fPandoraRecoLabel, cluster_handle))
         throw cet::exception("HyperonProduction::CollectHitsFromClusters") << "No Cluster Data Products Found! :(" << std::endl;
 
     art::FindManyP<recob::Cluster> pfp_clusters_assoc = art::FindManyP<recob::Cluster>(pfp_handle, evt, fPandoraRecoLabel);
@@ -800,7 +800,7 @@ void hyperon::HyperonProduction::getTopologicalScoreNuSliceID(art::Event const& 
 	if (slice_handle.isValid())
 		art::fill_ptr_vector(slice_vector, slice_handle);
 
-    art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle = 
+    art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle =
         evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
 
     art::FindManyP<recob::PFParticle> pfp_assoc = art::FindManyP<recob::PFParticle>(slice_handle, evt, fPandoraRecoLabel);
@@ -879,7 +879,7 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         getPFPRecoInfo(evt, nu_slice_pfp);
 
         // Get PFP truth matching variables
-        if (!fIsData) 
+        if (!fIsData)
             getMCParticleVariables(evt, nu_slice_pfp);
         else
             getBogusMCParticleVariables();
@@ -910,7 +910,7 @@ void hyperon::HyperonProduction::getPFPRecoInfo(art::Event const& evt, const art
     std::vector<art::Ptr<larpandoraobj::PFParticleMetadata>> pfp_metas =
         pfp_meta_assoc.at(pfparticle.key());
 
-    if ((!pfp_metas.empty()) && (pfp_metas.at(0)->GetPropertiesMap().find("TrackScore") != 
+    if ((!pfp_metas.empty()) && (pfp_metas.at(0)->GetPropertiesMap().find("TrackScore") !=
         pfp_metas.at(0)->GetPropertiesMap().end()))
     {
         _pfp_trk_shr_score.push_back(pfp_metas.at(0)->GetPropertiesMap().at("TrackScore"));
@@ -977,9 +977,9 @@ void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, c
         }
     }
 
-	if (_mc_particle_map.find(matched_trackID) != _mc_particle_map.end()) 
+	if (_mc_particle_map.find(matched_trackID) != _mc_particle_map.end())
     {
-        const art::Ptr<simb::MCParticle> &matched_mc_particle(_mc_particle_map.at(matched_trackID)); 
+        const art::Ptr<simb::MCParticle> &matched_mc_particle(_mc_particle_map.at(matched_trackID));
 
         _pfp_has_truth.push_back(true);
         _pfp_trackID.push_back(matched_mc_particle->TrackId());
@@ -1059,7 +1059,7 @@ void hyperon::HyperonProduction::getTrackVariables(art::Event const& evt, const 
         util::GetAssocProductVector<anab::Calorimetry>(track, evt, fTrackLabel, fCaloLabel);
 
     auto dedx = alg::ThreePlaneMeandEdX(track, calos);
-			
+
     _trk_mean_dedx_plane0.push_back(dedx.plane0);
     _trk_mean_dedx_plane1.push_back(dedx.plane1);
     _trk_mean_dedx_plane2.push_back(dedx.plane2);
@@ -1073,26 +1073,26 @@ void hyperon::HyperonProduction::getTrackVariables(art::Event const& evt, const 
 void hyperon::HyperonProduction::getBogusTrackVariables()
 {
 	_trk_length.push_back(bogus::DOUBLE);
-	_trk_start_x.push_back(bogus::DOUBLE); 
-	_trk_start_y.push_back(bogus::DOUBLE); 
-	_trk_start_z.push_back(bogus::DOUBLE); 
-	_trk_end_x.push_back(bogus::DOUBLE); 
-	_trk_end_y.push_back(bogus::DOUBLE); 
-	_trk_end_z.push_back(bogus::DOUBLE); 
-	_trk_dir_x.push_back(bogus::DOUBLE); 
-	_trk_dir_y.push_back(bogus::DOUBLE); 
-	_trk_dir_z.push_back(bogus::DOUBLE); 
-    _trk_mean_dedx_plane0.push_back(bogus::DOUBLE); 
-    _trk_mean_dedx_plane1.push_back(bogus::DOUBLE); 
-    _trk_mean_dedx_plane2.push_back(bogus::DOUBLE); 
-    _trk_three_plane_dedx.push_back(bogus::DOUBLE); 
-    _trk_llrpid.push_back(bogus::DOUBLE);
+	_trk_start_x.push_back(bogus::DOUBLE);
+	_trk_start_y.push_back(bogus::DOUBLE);
+	_trk_start_z.push_back(bogus::DOUBLE);
+	_trk_end_x.push_back(bogus::DOUBLE);
+	_trk_end_y.push_back(bogus::DOUBLE);
+	_trk_end_z.push_back(bogus::DOUBLE);
+	_trk_dir_x.push_back(bogus::DOUBLE);
+	_trk_dir_y.push_back(bogus::DOUBLE);
+	_trk_dir_z.push_back(bogus::DOUBLE);
+	_trk_mean_dedx_plane0.push_back(bogus::DOUBLE);
+	_trk_mean_dedx_plane1.push_back(bogus::DOUBLE);
+	_trk_mean_dedx_plane2.push_back(bogus::DOUBLE);
+	_trk_three_plane_dedx.push_back(bogus::DOUBLE);
+	_trk_llrpid.push_back(bogus::DOUBLE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle)
-{	
+{
 	art::ValidHandle<std::vector<recob::PFParticle>> pfp_handle =
 		evt.getValidHandle<std::vector<recob::PFParticle>>(fPandoraRecoLabel);
 
@@ -1136,7 +1136,7 @@ void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void hyperon::HyperonProduction::getBogusShowerVariables()
-{	
+{
     _shr_length.push_back(bogus::LENGTH);
     _shr_open_angle.push_back(bogus::ANGLE);
 	_shr_start_x.push_back(bogus::DOUBLE);
