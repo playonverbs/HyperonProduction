@@ -211,7 +211,7 @@ physics:
   prod: [ pandoraAllOutcomesTrackRedo, pandoraAllOutcomesShowerRedo, pandoraCaloAllOutcomes, pandoraCaliAllOutcomes, pandoraPIDAllOutcomes, pandoraCaloAllOutcomesSCE, pandoraCaliAllOutcomesSCE, pandoraPIDAllOutcomesSCE ]
 
   # Change root file
-  trigger_paths: [ prod ] 
+  trigger_paths: [ prod ]
 
   path0 : [ ana ]
 
