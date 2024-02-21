@@ -1,34 +1,237 @@
 #include "hyperonConfig.fcl"
+#include "pandoramodules_microboone.fcl"
+#include "reco_uboone_mcc9_8_driver_overlay_stage2.fcl"
 //#include "reco_uboone_mcc9_8_driver_overlay_stage2.fcl"
-#include "services_microboone.fcl"
+//#include "services_microboone.fcl"
 
 process_name: HyperonSelection
 
-source:
-{
-    module_type: RootInput
-    fileNames: [
-       "/uboone/data/users/npatel7/testfiles/hyperons/v08_00_00_51/PhysicsRun-2018_6_25_7_7_38-0017394-00138_20180718T202142_ext_unbiased_2_20220306T081112_simmxd_detsim_mix_r1a_r1b_20220306T134556_reco1c_20220308T140_154b7c86-d5bf-44de-a58d-2162253181c5.root"
-    ]
-    maxEvents:   -1
-}
-
-services:
-{
-    TFileService: { fileName: "analysisOutput.root" }
-    //FileCatalogMetadata: @local::art_file_catalog_mc
-    @table::microboone_services
-}
-
 physics:
 {
-    analyzers:
-    {
-        ana: @local::analyzeEvents
+  producers: {
+    pandoraAllOutcomesTrackRedo: @local::microboone_pandoraTrackCreation
+    pandoraAllOutcomesShowerRedo: @local::microboone_pandoraShowerCreation
+
+    pandoraCaloAllOutcomes: {
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: true
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CorrectSCE: false
+         Flip_dQdx: false
+         SpacePointModuleLabel: "pandoraPatRec:allOutcomes"
+         T0ModuleLabel: "mctrutht0"
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseArea: true
+         module_type: "Calorimetry"
     }
 
-    p0: [ ana ]
-    end_paths: [ p0 ]
+    pandoraCaloAllOutcomesSCE: {
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: true
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CorrectSCE: true
+         Flip_dQdx: false
+         SpacePointModuleLabel: "pandoraPatRec:allOutcomes"
+         T0ModuleLabel: "mctrutht0"
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseArea: true
+         module_type: "Calorimetry"
+    }
+
+    pandoraCaliAllOutcomes: {
+         CalibrationFileName: "calibration_mcc8.4_v1.root"
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: false
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CalorimetryModuleLabel: "pandoraCaloAllOutcomes"
+         Corr_X: [
+            "correction_x_plane0",
+            "correction_x_plane1",
+            "correction_x_plane2"
+         ]
+         Corr_YZ: [
+            "correction_yz_plane0",
+            "correction_yz_plane1",
+            "correction_yz_plane2"
+         ]
+         CorrectSCE: false
+         ELifetimeCorrection: true
+         ForceUnity: true
+         ModBoxA: 9.3e-1
+         ModBoxB: 2.12e-1
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseRecoTrackDir: true
+         module_type: "CalibrationdEdX"
+    }
+
+    pandoraCaliAllOutcomesSCE: {
+         CalibrationFileName: "calibration_mcc8.4_v1.root"
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: false
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CalorimetryModuleLabel: "pandoraCaloAllOutcomesSCE"
+         Corr_X: [
+            "correction_x_plane0",
+            "correction_x_plane1",
+            "correction_x_plane2"
+         ]
+         Corr_YZ: [
+            "correction_yz_plane0",
+            "correction_yz_plane1",
+            "correction_yz_plane2"
+         ]
+         CorrectSCE: true
+         ELifetimeCorrection: true
+         ForceUnity: true
+         ModBoxA: 9.3e-1
+         ModBoxB: 2.12e-1
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseRecoTrackDir: true
+         module_type: "CalibrationdEdX"
+    }
+
+    pandoraPIDAllOutcomes: {
+         BraggAlgo: {
+            EndPointFloatLong: 2
+            EndPointFloatShort: -2
+            EndPointFloatStepSize: 5e-2
+            LikelihoodMapsFile: "${UBOONEDATA_DIR}/ParticleID/BraggLikelihoodMaps_mcc8_20190215.root"
+            NHitsToDrop: 1
+         }
+         Chi2PIDAlg: {
+            TemplateFile: "dEdxrestemplates.root"
+            UseMedian: true
+         }
+         DaughterFinderCutDistance: 5
+         DaughterFinderCutFraction: 5e-1
+         FiducialVolume: {
+            X_HIGH: 10
+            X_LOW: 10
+            Y_HIGH: 10
+            Y_LOW: 10
+            Z_HIGH: 10
+            Z_LOW: 10
+         }
+         ProducerLabels: {
+            CaloTrackAssn: "pandoraCaloAllOutcomes"
+            CalorimetryLabel: "pandoraCaloAllOutcomes"
+            HitLabel: "gaushit"
+            HitTrackAssn: "pandoraAllOutcomesTrackRedo"
+            HitTruthAssn: "gaushitTruthMatch"
+            ParticleIdLabel: "pid::particleid"
+            TrackLabel: "pandoraAllOutcomesTrackRedo"
+         }
+         module_type: "ParticleId"
+      }
+
+      pandoraPIDAllOutcomesSCE: {
+         BraggAlgo: {
+            EndPointFloatLong: 2
+            EndPointFloatShort: -2
+            EndPointFloatStepSize: 5e-2
+            LikelihoodMapsFile: "${UBOONEDATA_DIR}/ParticleID/BraggLikelihoodMaps_mcc8_20190215.root"
+            NHitsToDrop: 1
+         }
+         Chi2PIDAlg: {
+            TemplateFile: "dEdxrestemplates.root"
+            UseMedian: true
+         }
+         DaughterFinderCutDistance: 5
+         DaughterFinderCutFraction: 5e-1
+         FiducialVolume: {
+            X_HIGH: 10
+            X_LOW: 10
+            Y_HIGH: 10
+            Y_LOW: 10
+            Z_HIGH: 10
+            Z_LOW: 10
+         }
+         ProducerLabels: {
+            CaloTrackAssn: "pandoraCaloAllOutcomesSCE"
+            CalorimetryLabel: "pandoraCaloAllOutcomesSCE"
+            HitLabel: "gaushit"
+            HitTrackAssn: "pandoraAllOutcomesTrackRedo"
+            HitTruthAssn: "gaushitTruthMatch"
+            ParticleIdLabel: "pid::particleid"
+            TrackLabel: "pandoraAllOutcomesTrackRedo"
+         }
+         module_type: "ParticleId"
+      }
+  }
+
+  analyzers:
+  {
+      ana: @local::analyzeEvents
+  }
+
+  prod: [ pandoraAllOutcomesTrackRedo, pandoraAllOutcomesShowerRedo, pandoraCaloAllOutcomes, pandoraCaliAllOutcomes, pandoraPIDAllOutcomes, pandoraCaloAllOutcomesSCE, pandoraCaliAllOutcomesSCE, pandoraPIDAllOutcomesSCE ]
+
+  # Change root file
+  trigger_paths: [ prod ] 
+
+  path0 : [ ana ]
+
+  # Do not change root file
+  end_paths: [ path0 ]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type:      RootOutput
+    fileName:         "outfile_%#.root"
+    dataTier:         "full-reconstructed"
+    fileProperties:
+    {
+      maxInputFiles:  1
+      granularity:    "InputFile"
+    }
+  }
 }
 
 // outputs: {         }
@@ -44,5 +247,11 @@ services.SpaceCharge.EnableSimEfieldSCE:              true
 services.SpaceCharge.RepresentationType:              "Voxelized_TH3"
 services.SpaceCharge.CalibrationInputFilename:        "SpaceCharge/SCEoffsets_dataDriven_combined_bkwd_Jan18.root"
 
+physics.producers.pandoraAllOutcomesTrackRedo.PFParticleLabel:  "pandoraPatRec:allOutcomes"
+physics.producers.pandoraAllOutcomesShowerRedo.PFParticleLabel: "pandoraPatRec:allOutcomes"
+physics.producers.pandoraAllOutcomesTrackRedo.UseAllParticles:   true
+physics.producers.pandoraAllOutcomesShowerRedo.UseAllParticles:  true
+
 physics.analyzers.ana.IsData:                         false
+physics.analyzers.ana.Debug:                          true
 
