@@ -128,7 +128,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         HyperonProduction& operator=(HyperonProduction&&) = delete;
 
         // Required functions.
-        void analyze(art::Event const& e) override;
+        void analyze(art::Event const& evt) override;
 
         // Selected optional functions.
         void beginJob() override;
