@@ -1,10 +1,10 @@
 #include "hyperonConfig.fcl"
 #include "pandoramodules_microboone.fcl"
 #include "reco_uboone_mcc9_8_driver_overlay_stage2.fcl"
-//#include "reco_uboone_mcc9_8_driver_overlay_stage2.fcl"
 //#include "services_microboone.fcl"
 
 process_name: HyperonSelection
+
 
 physics:
 {
@@ -219,23 +219,9 @@ physics:
   end_paths: [ path0 ]
 }
 
-outputs:
-{
-  out1:
-  {
-    module_type:      RootOutput
-    fileName:         "outfile_%#.root"
-    dataTier:         "full-reconstructed"
-    fileProperties:
-    {
-      maxInputFiles:  1
-      granularity:    "InputFile"
-    }
-  }
-}
+outputs: {}
 
-// outputs: {         }
-
+services.TFileService: { fileName: "analysisOutput.root" }
 services.DetectorClocksService.InheritClockConfig:    false
 services.DetectorClocksService.TriggerOffsetTPC:      -400
 services.DetectorPropertiesService.NumberTimeSamples: 6400
