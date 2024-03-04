@@ -989,9 +989,9 @@ void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, c
         _pfp_true_px.push_back(matched_mc_particle->Px());
         _pfp_true_py.push_back(matched_mc_particle->Py());
         _pfp_true_pz.push_back(matched_mc_particle->Pz());
-        // TODO: compute length and origin values.
+        // TODO: compute length value.
         _pfp_true_length.push_back(0.0);
-        _pfp_true_origin.push_back(-1);
+        _pfp_true_origin.push_back(getOrigin(matched_mc_particle->TrackId()));
 
         const int n_true_hits = _trackID_to_hits.at(matched_trackID).size();
 
