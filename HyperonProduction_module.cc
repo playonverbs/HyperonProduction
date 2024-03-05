@@ -35,6 +35,8 @@
 #include "lardataobj/RecoBase/Vertex.h"
 #include "lardataobj/RecoBase/Hit.h"
 
+#include "larcoreobj/SummaryData/POTSummary.h"
+
 // larpandora
 #include "larpandora/LArPandoraInterface/LArPandoraHelper.h"
 #include "larpandora/LArPandoraInterface/LArPandoraGeometry.h"
@@ -106,6 +108,8 @@ struct hyperon::Config {
                                              Comment("Label for Assns between recob::Track and recob::Hit") };
     Atom<std::string> fHitTruthAssnsLabel  { Name("HitTruthAssnsLabel"),
                                              Comment("Label for Assns between MCParticle, Hit and BackTrackerHitMatchingData") };
+    Atom<std::string> fPOTSummaryLabel     { Name("POTSummaryLabel"),
+                                             Comment("Label for POT Summary data") };
     Atom<bool>        fIsData              { Name("IsData"),
                                              Comment("Flag to indicate if the input is Data") };
     Atom<bool>        fDebug               { Name("Debug"),
@@ -136,6 +140,9 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         // Selected optional functions.
         void beginJob() override;
         void endJob() override;
+
+        void beginSubRun(const art::SubRun& sr);
+        void endSubRun(const art::SubRun& sr);
 
     private:
         void fillPandoraMaps(art::Event const& evt);
@@ -180,12 +187,15 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::string fHitLabel;
         std::string fTrackHitAssnsLabel;
         std::string fHitTruthAssnsLabel;
+        std::string fPOTSummaryLabel;
         bool fIsData;
         bool fDebug;
 
         std::vector<int> primary_ids;
         std::vector<int> sigmaZeroDaughter_ids;
         std::vector<int> lambdaDaughter_ids;
+
+        double _POT;
 
         /////////////////////////////
         // Event ID
@@ -290,6 +300,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         // Tree
         /////////////////////////////
         TTree* fTree;
+        TTree* fMetaTree;
 
         /////////////////////////////
         // Internal analyzer maps
@@ -486,18 +497,38 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("shr_dedx_plane1",    &_shr_dedx_plane1);
     fTree->Branch("shr_dedx_plane2",    &_shr_dedx_plane2);
 
-    //fTree->Branch("n_primary_tracks",        & _n_primary_tracks);
-    //fTree->Branch("n_primary_showers", &_n_primary_showers);
+    // Metadata Tree
+
+    _POT = 0.0;
+
+    fMetaTree = tfs->make<TTree>("MetaTree", "Metadata info tree");
+
+    fMetaTree->Branch("POT", &_POT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void hyperon::HyperonProduction::endJob()
 {
+    fMetaTree->Fill();
     if (fDebug)
         FNLOG("ending job");
     return;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::beginSubRun(const art::SubRun& sr)
+{
+    art::Handle<sumdata::POTSummary> POTHandle;
+    if (sr.getByLabel(fPOTSummaryLabel,POTHandle))
+        _POT += POTHandle->totpot;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::endSubRun(const art::SubRun& sr)
+{ }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

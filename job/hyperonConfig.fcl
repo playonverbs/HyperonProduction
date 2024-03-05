@@ -15,6 +15,7 @@ analyzeEvents:
     HitLabel:            "gaushit"
     TrackHitAssnsLabel:  "pandoraPatRec:allOutcomes"
     HitTruthAssnsLabel:  "gaushitTruthMatch"
+    POTSummaryLabel:     "generator"
 
     Debug:                false
     IsData:               false
