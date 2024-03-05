@@ -12,6 +12,7 @@ art_make(
   larsim_Simulation
   nutools_ParticleNavigation
   lardataobj_Simulation
+  lardataobj_MCBase
   lardata_Utilities
   larevt_Filters
   lardataobj_RawData

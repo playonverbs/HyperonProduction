@@ -7,6 +7,7 @@
 #include "cetlib_except/exception.h"
 #include "lardataobj/AnalysisBase/Calorimetry.h"
 #include "lardataobj/RecoBase/Track.h"
+#include "ubana/searchingfornues/Selection/CommonDefs/LLR_PID.h"
 
 #include <vector>
 
@@ -129,6 +130,59 @@ namespace hyperon {
             if (totalWeight > 0.0f) data.three_plane_average = totaldEdX / totalWeight;
 
             return data;
+        }
+
+        double LLRPID(
+                const std::vector<art::Ptr<anab::Calorimetry>> calos,
+                searchingfornues::LLRPID &pid_calc, // TODO: consider changing to LLRPID*
+                double ResRangeCutoff = 5.0) {
+            double this_llr_pid = 0;
+            double this_llr_pid_score = 0;
+
+            for (auto const &calo : calos) {
+                auto const &plane = calo->PlaneID().Plane;
+                auto const &dedx_values = calo->dEdx();
+                auto const &rr = calo->ResidualRange();
+                auto const &pitch = calo->TrkPitchVec();
+                std::vector<std::vector<float>> par_values;
+                par_values.push_back(rr);
+                par_values.push_back(pitch);
+
+                // Get partial length PIDs
+                std::vector<std::vector<float>> par_values_partial;
+                std::vector<float> dedx_values_partial, rr_partial, pitch_partial;
+
+                if (dedx_values.size() != rr.size() || rr.size() != pitch.size())
+                    throw cet::exception("HyperonProduction") << "Track calo point size mismatch\n";
+
+                for (size_t i_p = 0; i_p < calo->dEdx().size(); i_p++) {
+                    if (rr.at(i_p) > ResRangeCutoff) continue; // TODO: impl ResRangeCutoff
+
+                    dedx_values_partial.push_back(calo->dEdx().at(i_p));
+                    rr_partial.push_back(calo->ResidualRange().at(i_p));
+                    pitch_partial.push_back(calo->TrkPitchVec().at(i_p));
+                }
+                par_values_partial.push_back(rr_partial);
+                par_values_partial.push_back(pitch_partial);
+
+                if (calo->ResidualRange().size() == 0) continue;
+
+                float calo_energy = 0;
+                for (size_t i = 0; i < dedx_values.size(); i++)
+                    calo_energy += dedx_values[i] * pitch[i];
+
+                // TODO: do searchingfornues::llr_pid_calculator setup
+                float llr_pid = pid_calc.LLR_many_hits_one_plane(dedx_values,par_values,plane);
+                this_llr_pid += llr_pid;
+
+                float calo_energy_partial = 0;
+                for (size_t i = 0; i < dedx_values_partial.size(); i++)
+                    calo_energy_partial += dedx_values_partial[i] * pitch_partial[i];
+            }
+
+            this_llr_pid_score = atan(this_llr_pid/100.) * 2./3.14159266;
+
+            return this_llr_pid_score;
         }
     }
 }

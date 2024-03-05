@@ -33,12 +33,15 @@
 #include "lardataobj/RecoBase/Slice.h"
 #include "lardataobj/RecoBase/Track.h"
 #include "lardataobj/RecoBase/Vertex.h"
+#include "lardataobj/RecoBase/Hit.h"
 
 // larpandora
 #include "larpandora/LArPandoraInterface/LArPandoraHelper.h"
 #include "larpandora/LArPandoraInterface/LArPandoraGeometry.h"
 
-#include "ubana/searchingfornues/Selection/CommonDefs/PIDFuncs.h"
+#include "ubana/searchingfornues/Selection/CommonDefs/LLR_PID.h"
+#include "ubana/searchingfornues/Selection/CommonDefs/LLRPID_correction_lookup.h"
+#include "ubana/searchingfornues/Selection/CommonDefs/LLRPID_proton_muon_lookup.h"
 #include "ubana/HyperonProduction/Utils.h"
 #include "ubana/HyperonProduction/Alg.h"
 #include "ubana/HyperonProduction/FV.h"
@@ -161,6 +164,9 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         int getOrigin(int trackid);
 
         // Declare member data here.
+        searchingfornues::LLRPID llr_pid_calc;
+        searchingfornues::ProtonMuonLookUpParameters protonmuon_parameters;
+        searchingfornues::CorrectionLookUpParameters correction_parameters;
 
         // FHICL Params
         std::string fPandoraRecoLabel;
@@ -362,6 +368,25 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
 
 void hyperon::HyperonProduction::beginJob()
 {
+    // Setup searchingfornues::LLRPID with parameters.
+    llr_pid_calc.set_dedx_binning(0,      protonmuon_parameters.dedx_edges_pl_0);
+    llr_pid_calc.set_par_binning(0,       protonmuon_parameters.parameters_edges_pl_0);
+    llr_pid_calc.set_lookup_tables(0,     protonmuon_parameters.dedx_pdf_pl_0);
+    llr_pid_calc.set_corr_par_binning(0,  correction_parameters.parameter_correction_edges_pl_0);
+    llr_pid_calc.set_correction_tables(0, correction_parameters.correction_table_pl_0);
+
+    llr_pid_calc.set_dedx_binning(1,      protonmuon_parameters.dedx_edges_pl_1);
+    llr_pid_calc.set_par_binning(1,       protonmuon_parameters.parameters_edges_pl_1);
+    llr_pid_calc.set_lookup_tables(1,     protonmuon_parameters.dedx_pdf_pl_1);
+    llr_pid_calc.set_corr_par_binning(1,  correction_parameters.parameter_correction_edges_pl_1);
+    llr_pid_calc.set_correction_tables(1, correction_parameters.correction_table_pl_1);
+
+    llr_pid_calc.set_dedx_binning(2,      protonmuon_parameters.dedx_edges_pl_2);
+    llr_pid_calc.set_par_binning(2,       protonmuon_parameters.parameters_edges_pl_2);
+    llr_pid_calc.set_lookup_tables(2,     protonmuon_parameters.dedx_pdf_pl_2);
+    llr_pid_calc.set_corr_par_binning(2,  correction_parameters.parameter_correction_edges_pl_2);
+    llr_pid_calc.set_correction_tables(2, correction_parameters.correction_table_pl_2);
+
     art::ServiceHandle<art::TFileService> tfs;
     fTree = tfs->make<TTree>("OutputTree", "Output TTree");
 
@@ -1065,7 +1090,7 @@ void hyperon::HyperonProduction::getTrackVariables(art::Event const& evt, const 
     _trk_mean_dedx_plane2.push_back(dedx.plane2);
     _trk_three_plane_dedx.push_back(dedx.three_plane_average);
 
-    _trk_llrpid.push_back(bogus::DOUBLE);
+    _trk_llrpid.push_back(alg::LLRPID(calos, llr_pid_calc));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
