@@ -147,6 +147,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
     private:
         void fillPandoraMaps(art::Event const& evt);
         void fillMCParticleHitMaps(art::Event const& evt);
+        void fillG4Info(art::Event const& evt);
         bool isEM(const art::Ptr<simb::MCParticle> &mc_particle);
         int getLeadEMTrackID(const art::Ptr<simb::MCParticle> &mc_particle);
         void getEventMCInfo(art::Event const& evt);
@@ -216,7 +217,21 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         double       _mc_nu_pos_z;
         double       _mc_nu_q2;
         int          _mc_lepton_pdg;
+        double       _mc_lepton_start_x;
+        double       _mc_lepton_start_y;
+        double       _mc_lepton_start_z;
+        double       _mc_lepton_end_x;
+        double       _mc_lepton_end_y;
+        double       _mc_lepton_end_z;
         double       _mc_lepton_mom;
+        int          _mc_hyperon_pdg;
+        double       _mc_hyperon_start_x;
+        double       _mc_hyperon_start_y;
+        double       _mc_hyperon_start_z;
+        double       _mc_hyperon_end_x;
+        double       _mc_hyperon_end_y;
+        double       _mc_hyperon_end_z;
+        double       _mc_hyperon_mom;
         int          _true_nu_slice_ID;
         double       _true_nu_slice_completeness;
         double       _true_nu_slice_purity;
@@ -411,20 +426,34 @@ void hyperon::HyperonProduction::beginJob()
     /////////////////////////////
     // Event MC Info
     /////////////////////////////
-    fTree->Branch("n_mctruths",                  &_n_mctruths);
-    fTree->Branch("mc_nu_pdg",                   &_mc_nu_pdg);
-    fTree->Branch("mc_nu_q2",                    &_mc_nu_q2);
-    fTree->Branch("mc_ccnc",                     &_mc_ccnc);
-    fTree->Branch("mc_mode",                     &_mc_mode);
-    fTree->Branch("mc_nu_pos_x",                 &_mc_nu_pos_x);
-    fTree->Branch("mc_nu_pos_y",                 &_mc_nu_pos_y);
-    fTree->Branch("mc_nu_pos_z",                 &_mc_nu_pos_z);
-    fTree->Branch("mc_lepton_pdg",               &_mc_lepton_pdg);
-    fTree->Branch("mc_lepton_mom",               &_mc_lepton_mom);
-    fTree->Branch("true_nu_slice_ID",            &_true_nu_slice_ID);
-    fTree->Branch("true_nu_slice_completeness",  &_true_nu_slice_completeness);
-    fTree->Branch("true_nu_slice_purity",        &_true_nu_slice_purity);
-    fTree->Branch("n_slices",                    &_n_slices);
+    fTree->Branch("n_mctruths",                 &_n_mctruths);
+    fTree->Branch("mc_nu_pdg",                  &_mc_nu_pdg);
+    fTree->Branch("mc_nu_q2",                   &_mc_nu_q2);
+    fTree->Branch("mc_ccnc",                    &_mc_ccnc);
+    fTree->Branch("mc_mode",                    &_mc_mode);
+    fTree->Branch("mc_nu_pos_x",                &_mc_nu_pos_x);
+    fTree->Branch("mc_nu_pos_y",                &_mc_nu_pos_y);
+    fTree->Branch("mc_nu_pos_z",                &_mc_nu_pos_z);
+    fTree->Branch("mc_lepton_start_x",          &_mc_lepton_start_x);
+    fTree->Branch("mc_lepton_start_y",          &_mc_lepton_start_y);
+    fTree->Branch("mc_lepton_start_z",          &_mc_lepton_start_z);
+    fTree->Branch("mc_lepton_end_x",            &_mc_lepton_end_x);
+    fTree->Branch("mc_lepton_end_y",            &_mc_lepton_end_y);
+    fTree->Branch("mc_lepton_end_z",            &_mc_lepton_end_z);
+    fTree->Branch("mc_lepton_pdg",              &_mc_lepton_pdg);
+    fTree->Branch("mc_lepton_mom",              &_mc_lepton_mom);
+    fTree->Branch("mc_hyperon_start_x",         &_mc_hyperon_start_x);
+    fTree->Branch("mc_hyperon_start_y",         &_mc_hyperon_start_y);
+    fTree->Branch("mc_hyperon_start_z",         &_mc_hyperon_start_z);
+    fTree->Branch("mc_hyperon_end_x",           &_mc_hyperon_end_x);
+    fTree->Branch("mc_hyperon_end_y",           &_mc_hyperon_end_y);
+    fTree->Branch("mc_hyperon_end_z",           &_mc_hyperon_end_z);
+    fTree->Branch("mc_hyperon_pdg",             &_mc_hyperon_pdg);
+    fTree->Branch("mc_hyperon_mom",             &_mc_hyperon_mom);
+    fTree->Branch("true_nu_slice_ID",           &_true_nu_slice_ID);
+    fTree->Branch("true_nu_slice_completeness", &_true_nu_slice_completeness);
+    fTree->Branch("true_nu_slice_purity",       &_true_nu_slice_purity);
+    fTree->Branch("n_slices",                   &_n_slices);
 
     /////////////////////////////
     // FlashMatch Slice Info
@@ -666,6 +695,12 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
         _mc_nu_pos_z = truth->GetNeutrino().Nu().EndZ();
 
         _mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
+        _mc_lepton_start_x = truth->GetNeutrino().Lepton().Position().X();
+        _mc_lepton_start_y = truth->GetNeutrino().Lepton().Position().Y();
+        _mc_lepton_start_z = truth->GetNeutrino().Lepton().Position().Z();
+        _mc_lepton_end_x = truth->GetNeutrino().Lepton().EndX();
+        _mc_lepton_end_y = truth->GetNeutrino().Lepton().EndY();
+        _mc_lepton_end_z = truth->GetNeutrino().Lepton().EndZ();
         _mc_lepton_mom = truth->GetNeutrino().Lepton().Momentum().P();
 
         _mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
@@ -682,6 +717,26 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
 
     if (fDebug) std::cout << "Filling MC Slice Info..." << std::endl;
     getTrueNuSliceID(evt);
+    fillG4Info(evt);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::fillG4Info(art::Event const& evt)
+{
+    for (size_t i = 0; i < primary_ids.size(); i++)
+    {
+        if (!pdg::isHyperon(_mc_particle_map.at(primary_ids.at(i))))
+            continue;
+        _mc_hyperon_pdg     = _mc_particle_map.at(primary_ids.at(i))->PdgCode();
+        _mc_hyperon_start_x = _mc_particle_map.at(primary_ids.at(i))->Position().X();
+        _mc_hyperon_start_y = _mc_particle_map.at(primary_ids.at(i))->Position().Y();
+        _mc_hyperon_start_z = _mc_particle_map.at(primary_ids.at(i))->Position().Z();
+        _mc_hyperon_end_x   = _mc_particle_map.at(primary_ids.at(i))->EndX();
+        _mc_hyperon_end_y   = _mc_particle_map.at(primary_ids.at(i))->EndY();
+        _mc_hyperon_end_z   = _mc_particle_map.at(primary_ids.at(i))->EndZ();
+        _mc_hyperon_mom     = _mc_particle_map.at(primary_ids.at(i))->Momentum().P();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -924,6 +979,16 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
 
         if (!lar_pandora::LArPandoraHelper::IsNeutrino(parentPFP))
             continue;
+
+        const art::Ptr<recob::Vertex> primary_vtx =
+            util::GetAssocProduct<recob::Vertex>(parentPFP, evt, fPandoraRecoLabel, fPandoraRecoLabel);
+
+        _reco_primary_vtx_inFV = fv::inActiveTPC(primary_vtx->position().X(),
+                                                 primary_vtx->position().Y(),
+                                                 primary_vtx->position().Z());
+        _reco_primary_vtx_x = primary_vtx->position().X();
+        _reco_primary_vtx_y = primary_vtx->position().Y();
+        _reco_primary_vtx_z = primary_vtx->position().Z();
 
         // Let's just looking at primaries
         const unsigned int generation = lar_pandora::LArPandoraHelper::GetGeneration(_pfp_map, nu_slice_pfp);
@@ -1236,8 +1301,22 @@ void hyperon::HyperonProduction::clearTreeVariables()
     _mc_nu_pos_x = bogus::POS;
     _mc_nu_pos_y = bogus::POS;
     _mc_nu_pos_z = bogus::POS;
+    _mc_lepton_start_x = bogus::POS;
+    _mc_lepton_start_y = bogus::POS;
+    _mc_lepton_start_z = bogus::POS;
+    _mc_lepton_end_x = bogus::POS;
+    _mc_lepton_end_y = bogus::POS;
+    _mc_lepton_end_z = bogus::POS;
     _mc_lepton_pdg = bogus::PDG;
     _mc_lepton_mom = bogus::DOUBLE;
+    _mc_hyperon_start_x = bogus::POS;
+    _mc_hyperon_start_y = bogus::POS;
+    _mc_hyperon_start_z = bogus::POS;
+    _mc_hyperon_end_x = bogus::POS;
+    _mc_hyperon_end_y = bogus::POS;
+    _mc_hyperon_end_z = bogus::POS;
+    _mc_hyperon_pdg = bogus::PDG;
+    _mc_hyperon_mom = bogus::DOUBLE;
     _mc_ccnc   = "";
     _mc_mode   = "";
     _true_nu_slice_ID           = -1;
