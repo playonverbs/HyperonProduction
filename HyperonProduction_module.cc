@@ -273,6 +273,10 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _pfp_x;
         std::vector<double> _pfp_y;
         std::vector<double> _pfp_z;
+        bool   _reco_primary_vtx_inFV;
+        double _reco_primary_vtx_x;
+        double _reco_primary_vtx_y;
+        double _reco_primary_vtx_z;
 
         /////////////////////////////
         // Track Variables
@@ -483,11 +487,15 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("pfp_true_origin",   &_pfp_true_origin);
 
     // Reco pfp stuff
-    fTree->Branch("pfp_pdg",            &_pfp_pdg);
-    fTree->Branch("pfp_trk_shr_score",  &_pfp_trk_shr_score);
-    fTree->Branch("pfp_x",              &_pfp_x);
-    fTree->Branch("pfp_y",              &_pfp_y);
-    fTree->Branch("pfp_z",              &_pfp_z);
+    fTree->Branch("pfp_pdg",               &_pfp_pdg);
+    fTree->Branch("pfp_trk_shr_score",     &_pfp_trk_shr_score);
+    fTree->Branch("pfp_x",                 &_pfp_x);
+    fTree->Branch("pfp_y",                 &_pfp_y);
+    fTree->Branch("pfp_z",                 &_pfp_z);
+    fTree->Branch("reco_primary_vtx_inFV", &_reco_primary_vtx_inFV);
+    fTree->Branch("reco_primary_vtx_x",    &_reco_primary_vtx_x);
+    fTree->Branch("reco_primary_vtx_y",    &_reco_primary_vtx_y);
+    fTree->Branch("reco_primary_vtx_z",    &_reco_primary_vtx_z);
 
     /////////////////////////////
     // Track Variables
@@ -1360,6 +1368,10 @@ void hyperon::HyperonProduction::clearTreeVariables()
     _pfp_x.clear();
     _pfp_y.clear();
     _pfp_z.clear();
+    _reco_primary_vtx_inFV = false;
+    _reco_primary_vtx_x = bogus::POS;
+    _reco_primary_vtx_y = bogus::POS;
+    _reco_primary_vtx_z = bogus::POS;
 
     /////////////////////////////
     // Track Variables
