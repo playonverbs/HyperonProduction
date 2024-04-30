@@ -165,6 +165,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void getShowerVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getBogusShowerVariables();
         void clearTreeVariables();
+        void clearTreeVariablesReco();
+        void clearTreeVariablesMC();
         void fillNull();
 
         void buildTruthHierarchy(std::vector<art::Ptr<simb::MCParticle>> particleVector);
@@ -361,8 +363,15 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     _mc_particle_map.clear();
     _pfp_map.clear();
 
+    // Ensure the truth hierarchy is cleared
+    primary_ids.clear();
+    lambdaDaughter_ids.clear();
+    sigmaZeroDaughter_ids.clear();
+
     // And tree variables...
     clearTreeVariables();
+    clearTreeVariablesReco();
+    clearTreeVariablesMC();
 
     // Need to fill some 'Pandora maps' to assist true->reco matching
     if (fDebug) std::cout << "Filling Pandora Maps..." << std::endl;
@@ -968,7 +977,7 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         if (fDebug)
             FNLOG("flash match, or pandora slice not found");
 
-        fillNull();
+        clearTreeVariablesReco();
         return;
     }
 
@@ -1284,22 +1293,8 @@ void hyperon::HyperonProduction::getBogusShowerVariables()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO: define and set NULL values for failure modes accessing slice, track, etc..
-void hyperon::HyperonProduction::clearTreeVariables()
+void hyperon::HyperonProduction::clearTreeVariablesMC()
 {
-    // ATTN: I DONT THINK THEY SHOULD BE HERE
-    //i.e. this function is called when there is no reco info
-    primary_ids.clear();
-    lambdaDaughter_ids.clear();
-    sigmaZeroDaughter_ids.clear();
-
-    /////////////////////////////
-    // Event ID
-    /////////////////////////////
-    _run = -999;
-    _subrun = -999;
-    _event = -999;
-
     /////////////////////////////
     // Event MC Info
     /////////////////////////////
@@ -1330,21 +1325,10 @@ void hyperon::HyperonProduction::clearTreeVariables()
     _true_nu_slice_ID           = -1;
     _true_nu_slice_completeness = bogus::DOUBLE;
     _true_nu_slice_purity       = bogus::DOUBLE;
+}
 
-    _n_slices                   = 0;
-    //_n_primary_tracks  = 0;
-    //_n_primary_showers = 0;
-
-    /////////////////////////////
-    // FlashMatch Slice Info
-    /////////////////////////////
-    _flash_match_nu_slice_ID    = -1;
-
-    /////////////////////////////
-    // Pandora Slice Info
-    /////////////////////////////
-    _pandora_nu_slice_ID        = -1;
-
+void hyperon::HyperonProduction::clearTreeVariablesReco()
+{
     /////////////////////////////
     // PFParticle Variables
     /////////////////////////////
@@ -1409,6 +1393,32 @@ void hyperon::HyperonProduction::clearTreeVariables()
     _shr_dedx_plane1.clear();
     _shr_dedx_plane2.clear();
     _shr_open_angle.clear();
+}
+
+
+// TODO: define and set NULL values for failure modes accessing slice, track, etc..
+void hyperon::HyperonProduction::clearTreeVariables()
+{
+    /////////////////////////////
+    // Event ID
+    /////////////////////////////
+    _run = -999;
+    _subrun = -999;
+    _event = -999;
+
+    _n_slices                   = 0;
+    //_n_primary_tracks  = 0;
+    //_n_primary_showers = 0;
+
+    /////////////////////////////
+    // FlashMatch Slice Info
+    /////////////////////////////
+    _flash_match_nu_slice_ID    = -1;
+
+    /////////////////////////////
+    // Pandora Slice Info
+    /////////////////////////////
+    _pandora_nu_slice_ID        = -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
