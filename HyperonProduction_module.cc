@@ -198,7 +198,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<int> sigmaZeroDaughter_ids;
         std::vector<int> lambdaDaughter_ids;
 
-        double _POT;
+        double _POT = 0.0;
 
         /////////////////////////////
         // Event ID
@@ -348,6 +348,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
     fHitLabel(config().fHitLabel()),
     fTrackHitAssnsLabel(config().fTrackHitAssnsLabel()),
     fHitTruthAssnsLabel(config().fHitTruthAssnsLabel()),
+    fPOTSummaryLabel(config().fPOTSummaryLabel()),
     fIsData(config().fIsData()),
     fDebug(config().fDebug())
 {
@@ -566,6 +567,9 @@ void hyperon::HyperonProduction::endJob()
 
 void hyperon::HyperonProduction::beginSubRun(const art::SubRun& sr)
 {
+    if (fDebug)
+        FNLOG("getting subrun POT info");
+
     art::Handle<sumdata::POTSummary> POTHandle;
     if (sr.getByLabel(fPOTSummaryLabel,POTHandle))
         _POT += POTHandle->totpot;
