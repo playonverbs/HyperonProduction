@@ -705,16 +705,16 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
         art::fill_ptr_vector(mcTruthVector, mcTruthHandle);
 
     // Fill truth information
+    _n_mctruths = mcTruthVector.size();
     for (const art::Ptr<simb::MCTruth> &truth : mcTruthVector)
     {
-        _n_mctruths++;
-
         _mc_nu_pdg   = truth->GetNeutrino().Nu().PdgCode();
         _mc_nu_q2    = truth->GetNeutrino().QSqr();
-        _mc_nu_pos_x = truth->GetNeutrino().Nu().EndX();
-        _mc_nu_pos_y = truth->GetNeutrino().Nu().EndY();
-        _mc_nu_pos_z = truth->GetNeutrino().Nu().EndZ();
+        _mc_nu_pos_x = truth->GetNeutrino().Nu().Vx();
+        _mc_nu_pos_y = truth->GetNeutrino().Nu().Vy();
+        _mc_nu_pos_z = truth->GetNeutrino().Nu().Vz();
 
+        // TODO: get this from geant4 instead!!! DUH
         _mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
         _mc_lepton_start_x = truth->GetNeutrino().Lepton().Position().X();
         _mc_lepton_start_y = truth->GetNeutrino().Lepton().Position().Y();
@@ -1132,7 +1132,14 @@ void hyperon::HyperonProduction::getMCParticleVariables(art::Event const& evt, c
         _pfp_true_py.push_back(matched_mc_particle->Py());
         _pfp_true_pz.push_back(matched_mc_particle->Pz());
         // TODO: compute length value.
-        _pfp_true_length.push_back(0.0);
+        _pfp_true_length.push_back(
+                (TVector3(matched_mc_particle->EndX(),
+                          matched_mc_particle->EndY(),
+                          matched_mc_particle->EndZ())
+                 - TVector3(matched_mc_particle->Vx(),
+                            matched_mc_particle->Vy(),
+                            matched_mc_particle->Vz())).Mag()
+        );
         _pfp_true_origin.push_back(getOrigin(matched_mc_particle->TrackId()));
 
         const int n_true_hits = _trackID_to_hits.at(matched_trackID).size();
