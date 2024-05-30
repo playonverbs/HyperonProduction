@@ -246,6 +246,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         // FlashMatch Slice Info
         /////////////////////////////
         int _flash_match_nu_slice_ID;
+        int _ct_nu_slice_ID;
 
         /////////////////////////////
         // Pandora Slice Info
@@ -400,6 +401,7 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     // Fill the reconstructed neutrino hierarchy variables (using flash match neutrino slice)
     if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
     getEventRecoInfo(evt, _flash_match_nu_slice_ID);
+    /* getEventRecoInfo(evt, _ct_nu_slice_ID); */
 
     fTree->Fill();
 }
@@ -473,6 +475,7 @@ void hyperon::HyperonProduction::beginJob()
     // FlashMatch Slice Info
     /////////////////////////////
     fTree->Branch("flash_match_nu_slice_ID",     &_flash_match_nu_slice_ID);
+    fTree->Branch("ct_nu_slice_ID",              &_ct_nu_slice_ID);
 
     /////////////////////////////
     // Pandora Slice Info
@@ -851,6 +854,22 @@ std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::collectHitsFromClu
 
 void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
 {
+    std::vector<art::Ptr<recob::Slice>> nu_slice;
+
+    std::vector<art::Ptr<recob::PFParticle>> pfparticleVect =
+        util::GetProductVector<recob::PFParticle>(evt, fPandoraRecoLabel);
+    art::FindManyP<recob::Slice> slicePFParticleAssoc(pfparticleVect, evt, fPandoraRecoLabel);
+
+    for(const art::Ptr<recob::PFParticle> &pfp : pfparticleVect){
+        if((pfp->IsPrimary() && (std::abs(pfp->PdgCode()) == 14 || std::abs(pfp->PdgCode()) == 12))){
+          nu_slice = slicePFParticleAssoc.at(pfp.key());
+          if (nu_slice.size() == 1)
+              _ct_nu_slice_ID = nu_slice.at(0)->ID();
+       }
+    }
+
+    if (fDebug)
+        FNLOG("trying to get flash match slice!");
     art::Handle<std::vector<recob::PFParticle>> fm_pfp_handle;
     std::vector<art::Ptr<recob::PFParticle>> fm_pfp_vector;
 
@@ -868,11 +887,14 @@ void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
     }
     else if (neutrinoPFPs.size() == 1)
     {
+        std::cout << "hello this is an alert that neutrinoPFPs.size() == 1" << "\n";
         art::FindManyP<recob::Slice> fm_slice_assoc = art::FindManyP<recob::Slice>(fm_pfp_handle, evt, fFlashMatchRecoLabel);
         const std::vector<art::Ptr<recob::Slice>> &fm_slices = fm_slice_assoc.at(neutrinoPFPs[0].key());
 
-        if (fm_slices.empty())
+        if (fm_slices.empty()) {
+            FNLOG("no flash matched slices options found :(");
             return;
+        }
 
         // Get hits, and then work out if they also live in the pandoraPatRec reco?
         const art::Ptr<recob::Slice> &fm_slice(fm_slices.at(0));
@@ -885,8 +907,10 @@ void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
         art::FindManyP<recob::Hit> fm_hit_assoc = art::FindManyP<recob::Hit>(fm_slice_handle, evt, fFlashMatchRecoLabel);
         const std::vector<art::Ptr<recob::Hit>> &fm_slice_hits(fm_hit_assoc.at(fm_slice.key()));
 
-        if (fm_slice_hits.empty())
+        if (fm_slice_hits.empty()) {
+            FNLOG("no flash matched slice hits options found :(");
             return;
+        }
 
         // Get equivalent pandoraPatRec products
         art::ValidHandle<std::vector<recob::Slice>> slice_handle =
@@ -1425,6 +1449,7 @@ void hyperon::HyperonProduction::clearTreeVariables()
     // FlashMatch Slice Info
     /////////////////////////////
     _flash_match_nu_slice_ID    = -1;
+    _ct_nu_slice_ID = -1;
 
     /////////////////////////////
     // Pandora Slice Info
