@@ -210,33 +210,41 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         /////////////////////////////
         // Event MC Info
         /////////////////////////////
-        unsigned int _n_mctruths;
-        std::string  _mc_ccnc;
-        std::string  _mc_mode;
-        int          _mc_nu_pdg;
-        double       _mc_nu_pos_x;
-        double       _mc_nu_pos_y;
-        double       _mc_nu_pos_z;
-        double       _mc_nu_q2;
-        int          _mc_lepton_pdg;
-        double       _mc_lepton_start_x;
-        double       _mc_lepton_start_y;
-        double       _mc_lepton_start_z;
-        double       _mc_lepton_end_x;
-        double       _mc_lepton_end_y;
-        double       _mc_lepton_end_z;
-        double       _mc_lepton_mom;
-        int          _mc_hyperon_pdg;
-        double       _mc_hyperon_start_x;
-        double       _mc_hyperon_start_y;
-        double       _mc_hyperon_start_z;
-        double       _mc_hyperon_end_x;
-        double       _mc_hyperon_end_y;
-        double       _mc_hyperon_end_z;
-        double       _mc_hyperon_mom;
-        int          _true_nu_slice_ID;
-        double       _true_nu_slice_completeness;
-        double       _true_nu_slice_purity;
+        unsigned            int _n_mctruths;
+        std::string         _mc_ccnc;
+        std::string         _mc_mode;
+        int                 _mc_nu_pdg;
+        double              _mc_nu_pos_x;
+        double              _mc_nu_pos_y;
+        double              _mc_nu_pos_z;
+        double              _mc_nu_q2;
+        int                 _mc_lepton_pdg;
+        double              _mc_lepton_start_x;
+        double              _mc_lepton_start_y;
+        double              _mc_lepton_start_z;
+        double              _mc_lepton_end_x;
+        double              _mc_lepton_end_y;
+        double              _mc_lepton_end_z;
+        double              _mc_lepton_mom;
+        int                 _mc_hyperon_pdg;
+        double              _mc_hyperon_start_x;
+        double              _mc_hyperon_start_y;
+        double              _mc_hyperon_start_z;
+        double              _mc_hyperon_end_x;
+        double              _mc_hyperon_end_y;
+        double              _mc_hyperon_end_z;
+        double              _mc_hyperon_mom;
+        std::vector<int>    _mc_decay_pdg;
+        std::vector<double> _mc_decay_start_x;
+        std::vector<double> _mc_decay_start_y;
+        std::vector<double> _mc_decay_start_z;
+        std::vector<double> _mc_decay_end_x;
+        std::vector<double> _mc_decay_end_y;
+        std::vector<double> _mc_decay_end_z;
+        std::vector<double> _mc_decay_mom;
+        int                 _true_nu_slice_ID;
+        double              _true_nu_slice_completeness;
+        double              _true_nu_slice_purity;
 
         unsigned int _n_slices;
         //unsigned int _n_primary_tracks;          // do we need these if we have multiple slices?
@@ -466,6 +474,14 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("mc_hyperon_end_z",           &_mc_hyperon_end_z);
     fTree->Branch("mc_hyperon_pdg",             &_mc_hyperon_pdg);
     fTree->Branch("mc_hyperon_mom",             &_mc_hyperon_mom);
+    fTree->Branch("mc_decay_pdg",               &_mc_decay_pdg);
+    fTree->Branch("mc_decay_start_x",           &_mc_decay_start_x);
+    fTree->Branch("mc_decay_start_y",           &_mc_decay_start_y);
+    fTree->Branch("mc_decay_start_z",           &_mc_decay_start_z);
+    fTree->Branch("mc_decay_end_x",             &_mc_decay_end_x);
+    fTree->Branch("mc_decay_end_y",             &_mc_decay_end_y);
+    fTree->Branch("mc_decay_end_z",             &_mc_decay_end_z);
+    fTree->Branch("mc_decay_mom",               &_mc_decay_mom);
     fTree->Branch("true_nu_slice_ID",           &_true_nu_slice_ID);
     fTree->Branch("true_nu_slice_completeness", &_true_nu_slice_completeness);
     fTree->Branch("true_nu_slice_purity",       &_true_nu_slice_purity);
@@ -1355,6 +1371,16 @@ void hyperon::HyperonProduction::clearTreeVariablesMC()
     _mc_hyperon_end_z = bogus::POS;
     _mc_hyperon_pdg = bogus::PDG;
     _mc_hyperon_mom = bogus::DOUBLE;
+
+    _mc_decay_pdg.clear();
+    _mc_decay_start_x.clear();
+    _mc_decay_start_y.clear();
+    _mc_decay_start_z.clear();
+    _mc_decay_end_x.clear();
+    _mc_decay_end_y.clear();
+    _mc_decay_end_z.clear();
+    _mc_decay_mom.clear();
+
     _mc_ccnc   = "";
     _mc_mode   = "";
     _true_nu_slice_ID           = -1;
