@@ -733,16 +733,6 @@ void hyperon::HyperonProduction::getEventMCInfo(art::Event const& evt)
         _mc_nu_pos_y = truth->GetNeutrino().Nu().Vy();
         _mc_nu_pos_z = truth->GetNeutrino().Nu().Vz();
 
-        // TODO: get this from geant4 instead!!! DUH
-        _mc_lepton_pdg = truth->GetNeutrino().Lepton().PdgCode();
-        _mc_lepton_start_x = truth->GetNeutrino().Lepton().Position().X();
-        _mc_lepton_start_y = truth->GetNeutrino().Lepton().Position().Y();
-        _mc_lepton_start_z = truth->GetNeutrino().Lepton().Position().Z();
-        _mc_lepton_end_x = truth->GetNeutrino().Lepton().EndX();
-        _mc_lepton_end_y = truth->GetNeutrino().Lepton().EndY();
-        _mc_lepton_end_z = truth->GetNeutrino().Lepton().EndZ();
-        _mc_lepton_mom = truth->GetNeutrino().Lepton().Momentum().P();
-
         _mc_ccnc = util::GetCCNC(truth->GetNeutrino().CCNC());
         _mc_mode = util::GetEventType(truth->GetNeutrino().Mode());
 
@@ -766,16 +756,29 @@ void hyperon::HyperonProduction::fillG4Info(art::Event const& evt)
 {
     for (size_t i = 0; i < primary_ids.size(); i++)
     {
-        if (!pdg::isHyperon(_mc_particle_map.at(primary_ids.at(i))))
-            continue;
-        _mc_hyperon_pdg     = _mc_particle_map.at(primary_ids.at(i))->PdgCode();
-        _mc_hyperon_start_x = _mc_particle_map.at(primary_ids.at(i))->Position().X();
-        _mc_hyperon_start_y = _mc_particle_map.at(primary_ids.at(i))->Position().Y();
-        _mc_hyperon_start_z = _mc_particle_map.at(primary_ids.at(i))->Position().Z();
-        _mc_hyperon_end_x   = _mc_particle_map.at(primary_ids.at(i))->EndX();
-        _mc_hyperon_end_y   = _mc_particle_map.at(primary_ids.at(i))->EndY();
-        _mc_hyperon_end_z   = _mc_particle_map.at(primary_ids.at(i))->EndZ();
-        _mc_hyperon_mom     = _mc_particle_map.at(primary_ids.at(i))->Momentum().P();
+        if (pdg::isHyperon(_mc_particle_map.at(primary_ids.at(i))))
+        {
+            _mc_hyperon_pdg     = _mc_particle_map.at(primary_ids.at(i))->PdgCode();
+            _mc_hyperon_start_x = _mc_particle_map.at(primary_ids.at(i))->Position().X();
+            _mc_hyperon_start_y = _mc_particle_map.at(primary_ids.at(i))->Position().Y();
+            _mc_hyperon_start_z = _mc_particle_map.at(primary_ids.at(i))->Position().Z();
+            _mc_hyperon_end_x   = _mc_particle_map.at(primary_ids.at(i))->EndX();
+            _mc_hyperon_end_y   = _mc_particle_map.at(primary_ids.at(i))->EndY();
+            _mc_hyperon_end_z   = _mc_particle_map.at(primary_ids.at(i))->EndZ();
+            _mc_hyperon_mom     = _mc_particle_map.at(primary_ids.at(i))->Momentum().P();
+        }
+
+        if (pdg::isLepton(_mc_particle_map.at(primary_ids.at(i))))
+        {
+            _mc_lepton_pdg     = _mc_particle_map.at(primary_ids.at(i))->PdgCode();
+            _mc_lepton_start_x = _mc_particle_map.at(primary_ids.at(i))->Position().X();
+            _mc_lepton_start_y = _mc_particle_map.at(primary_ids.at(i))->Position().Y();
+            _mc_lepton_start_z = _mc_particle_map.at(primary_ids.at(i))->Position().Z();
+            _mc_lepton_end_x   = _mc_particle_map.at(primary_ids.at(i))->EndX();
+            _mc_lepton_end_y   = _mc_particle_map.at(primary_ids.at(i))->EndY();
+            _mc_lepton_end_z   = _mc_particle_map.at(primary_ids.at(i))->EndZ();
+            _mc_lepton_mom     = _mc_particle_map.at(primary_ids.at(i))->Momentum().P();
+        }
     }
 
     for (size_t i = 0; i < lambdaDaughter_ids.size(); i++)
