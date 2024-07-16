@@ -777,6 +777,18 @@ void hyperon::HyperonProduction::fillG4Info(art::Event const& evt)
         _mc_hyperon_end_z   = _mc_particle_map.at(primary_ids.at(i))->EndZ();
         _mc_hyperon_mom     = _mc_particle_map.at(primary_ids.at(i))->Momentum().P();
     }
+
+    for (size_t i = 0; i < lambdaDaughter_ids.size(); i++)
+    {
+        _mc_decay_pdg.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->PdgCode());
+        _mc_decay_start_x.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->Position().X());
+        _mc_decay_start_y.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->Position().Y());
+        _mc_decay_start_z.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->Position().Z());
+        _mc_decay_end_x.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->EndX());
+        _mc_decay_end_y.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->EndY());
+        _mc_decay_end_z.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->EndZ());
+        _mc_decay_mom.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->Momentum().P());
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
