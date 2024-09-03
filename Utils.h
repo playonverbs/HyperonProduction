@@ -192,5 +192,11 @@ namespace hyperon {
             return absPDG == 321 || absPDG == 311 || absPDG == 130 || absPDG == 310;
         }
         inline bool isKaon(const art::Ptr<simb::MCParticle> p) { return isKaon(p->PdgCode()); }
+
+        inline bool isPhoton(const int pdgCode) {
+            const int absPDG = abs(pdgCode);
+            return absPDG == 22;
+        }
+        inline bool isPhoton(const art::Ptr<simb::MCParticle> p) { return isPhoton(p->PdgCode()); }
     }
 }

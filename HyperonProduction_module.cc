@@ -242,6 +242,22 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _mc_decay_end_y;
         std::vector<double> _mc_decay_end_z;
         std::vector<double> _mc_decay_mom;
+        int                 _mc_sigmazero_photon_pdg;
+        double              _mc_sigmazero_photon_start_x;
+        double              _mc_sigmazero_photon_start_y;
+        double              _mc_sigmazero_photon_start_z;
+        double              _mc_sigmazero_photon_end_x;
+        double              _mc_sigmazero_photon_end_y;
+        double              _mc_sigmazero_photon_end_z;
+        double              _mc_sigmazero_photon_mom;
+        int                 _mc_sigmazero_lambda_pdg;
+        double              _mc_sigmazero_lambda_start_x;
+        double              _mc_sigmazero_lambda_start_y;
+        double              _mc_sigmazero_lambda_start_z;
+        double              _mc_sigmazero_lambda_end_x;
+        double              _mc_sigmazero_lambda_end_y;
+        double              _mc_sigmazero_lambda_end_z;
+        double              _mc_sigmazero_lambda_mom;
         int                 _true_nu_slice_ID;
         double              _true_nu_slice_completeness;
         double              _true_nu_slice_purity;
@@ -450,42 +466,58 @@ void hyperon::HyperonProduction::beginJob()
     /////////////////////////////
     // Event MC Info
     /////////////////////////////
-    fTree->Branch("n_mctruths",                 &_n_mctruths);
-    fTree->Branch("mc_nu_pdg",                  &_mc_nu_pdg);
-    fTree->Branch("mc_nu_q2",                   &_mc_nu_q2);
-    fTree->Branch("mc_ccnc",                    &_mc_ccnc);
-    fTree->Branch("mc_mode",                    &_mc_mode);
-    fTree->Branch("mc_nu_pos_x",                &_mc_nu_pos_x);
-    fTree->Branch("mc_nu_pos_y",                &_mc_nu_pos_y);
-    fTree->Branch("mc_nu_pos_z",                &_mc_nu_pos_z);
-    fTree->Branch("mc_lepton_start_x",          &_mc_lepton_start_x);
-    fTree->Branch("mc_lepton_start_y",          &_mc_lepton_start_y);
-    fTree->Branch("mc_lepton_start_z",          &_mc_lepton_start_z);
-    fTree->Branch("mc_lepton_end_x",            &_mc_lepton_end_x);
-    fTree->Branch("mc_lepton_end_y",            &_mc_lepton_end_y);
-    fTree->Branch("mc_lepton_end_z",            &_mc_lepton_end_z);
-    fTree->Branch("mc_lepton_pdg",              &_mc_lepton_pdg);
-    fTree->Branch("mc_lepton_mom",              &_mc_lepton_mom);
-    fTree->Branch("mc_hyperon_start_x",         &_mc_hyperon_start_x);
-    fTree->Branch("mc_hyperon_start_y",         &_mc_hyperon_start_y);
-    fTree->Branch("mc_hyperon_start_z",         &_mc_hyperon_start_z);
-    fTree->Branch("mc_hyperon_end_x",           &_mc_hyperon_end_x);
-    fTree->Branch("mc_hyperon_end_y",           &_mc_hyperon_end_y);
-    fTree->Branch("mc_hyperon_end_z",           &_mc_hyperon_end_z);
-    fTree->Branch("mc_hyperon_pdg",             &_mc_hyperon_pdg);
-    fTree->Branch("mc_hyperon_mom",             &_mc_hyperon_mom);
-    fTree->Branch("mc_decay_pdg",               &_mc_decay_pdg);
-    fTree->Branch("mc_decay_start_x",           &_mc_decay_start_x);
-    fTree->Branch("mc_decay_start_y",           &_mc_decay_start_y);
-    fTree->Branch("mc_decay_start_z",           &_mc_decay_start_z);
-    fTree->Branch("mc_decay_end_x",             &_mc_decay_end_x);
-    fTree->Branch("mc_decay_end_y",             &_mc_decay_end_y);
-    fTree->Branch("mc_decay_end_z",             &_mc_decay_end_z);
-    fTree->Branch("mc_decay_mom",               &_mc_decay_mom);
-    fTree->Branch("true_nu_slice_ID",           &_true_nu_slice_ID);
-    fTree->Branch("true_nu_slice_completeness", &_true_nu_slice_completeness);
-    fTree->Branch("true_nu_slice_purity",       &_true_nu_slice_purity);
-    fTree->Branch("n_slices",                   &_n_slices);
+    fTree->Branch("n_mctruths",                  &_n_mctruths);
+    fTree->Branch("mc_nu_pdg",                   &_mc_nu_pdg);
+    fTree->Branch("mc_nu_q2",                    &_mc_nu_q2);
+    fTree->Branch("mc_ccnc",                     &_mc_ccnc);
+    fTree->Branch("mc_mode",                     &_mc_mode);
+    fTree->Branch("mc_nu_pos_x",                 &_mc_nu_pos_x);
+    fTree->Branch("mc_nu_pos_y",                 &_mc_nu_pos_y);
+    fTree->Branch("mc_nu_pos_z",                 &_mc_nu_pos_z);
+    fTree->Branch("mc_lepton_start_x",           &_mc_lepton_start_x);
+    fTree->Branch("mc_lepton_start_y",           &_mc_lepton_start_y);
+    fTree->Branch("mc_lepton_start_z",           &_mc_lepton_start_z);
+    fTree->Branch("mc_lepton_end_x",             &_mc_lepton_end_x);
+    fTree->Branch("mc_lepton_end_y",             &_mc_lepton_end_y);
+    fTree->Branch("mc_lepton_end_z",             &_mc_lepton_end_z);
+    fTree->Branch("mc_lepton_pdg",               &_mc_lepton_pdg);
+    fTree->Branch("mc_lepton_mom",               &_mc_lepton_mom);
+    fTree->Branch("mc_hyperon_start_x",          &_mc_hyperon_start_x);
+    fTree->Branch("mc_hyperon_start_y",          &_mc_hyperon_start_y);
+    fTree->Branch("mc_hyperon_start_z",          &_mc_hyperon_start_z);
+    fTree->Branch("mc_hyperon_end_x",            &_mc_hyperon_end_x);
+    fTree->Branch("mc_hyperon_end_y",            &_mc_hyperon_end_y);
+    fTree->Branch("mc_hyperon_end_z",            &_mc_hyperon_end_z);
+    fTree->Branch("mc_hyperon_pdg",              &_mc_hyperon_pdg);
+    fTree->Branch("mc_hyperon_mom",              &_mc_hyperon_mom);
+    fTree->Branch("mc_sigmazero_photon_start_x", &_mc_sigmazero_photon_start_x);
+    fTree->Branch("mc_sigmazero_photon_start_y", &_mc_sigmazero_photon_start_y);
+    fTree->Branch("mc_sigmazero_photon_start_z", &_mc_sigmazero_photon_start_z);
+    fTree->Branch("mc_sigmazero_photon_end_x",   &_mc_sigmazero_photon_end_x);
+    fTree->Branch("mc_sigmazero_photon_end_y",   &_mc_sigmazero_photon_end_y);
+    fTree->Branch("mc_sigmazero_photon_end_z",   &_mc_sigmazero_photon_end_z);
+    fTree->Branch("mc_sigmazero_photon_pdg",     &_mc_sigmazero_photon_pdg);
+    fTree->Branch("mc_sigmazero_photon_mom",     &_mc_sigmazero_photon_mom);
+    fTree->Branch("mc_sigmazero_lambda_start_x", &_mc_sigmazero_lambda_start_x);
+    fTree->Branch("mc_sigmazero_lambda_start_y", &_mc_sigmazero_lambda_start_y);
+    fTree->Branch("mc_sigmazero_lambda_start_z", &_mc_sigmazero_lambda_start_z);
+    fTree->Branch("mc_sigmazero_lambda_end_x",   &_mc_sigmazero_lambda_end_x);
+    fTree->Branch("mc_sigmazero_lambda_end_y",   &_mc_sigmazero_lambda_end_y);
+    fTree->Branch("mc_sigmazero_lambda_end_z",   &_mc_sigmazero_lambda_end_z);
+    fTree->Branch("mc_sigmazero_lambda_pdg",     &_mc_sigmazero_lambda_pdg);
+    fTree->Branch("mc_sigmazero_lambda_mom",     &_mc_sigmazero_lambda_mom);
+    fTree->Branch("mc_decay_pdg",                &_mc_decay_pdg);
+    fTree->Branch("mc_decay_start_x",            &_mc_decay_start_x);
+    fTree->Branch("mc_decay_start_y",            &_mc_decay_start_y);
+    fTree->Branch("mc_decay_start_z",            &_mc_decay_start_z);
+    fTree->Branch("mc_decay_end_x",              &_mc_decay_end_x);
+    fTree->Branch("mc_decay_end_y",              &_mc_decay_end_y);
+    fTree->Branch("mc_decay_end_z",              &_mc_decay_end_z);
+    fTree->Branch("mc_decay_mom",                &_mc_decay_mom);
+    fTree->Branch("true_nu_slice_ID",            &_true_nu_slice_ID);
+    fTree->Branch("true_nu_slice_completeness",  &_true_nu_slice_completeness);
+    fTree->Branch("true_nu_slice_purity",        &_true_nu_slice_purity);
+    fTree->Branch("n_slices",                    &_n_slices);
 
     /////////////////////////////
     // FlashMatch Slice Info
@@ -791,6 +823,30 @@ void hyperon::HyperonProduction::fillG4Info(art::Event const& evt)
         _mc_decay_end_y.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->EndY());
         _mc_decay_end_z.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->EndZ());
         _mc_decay_mom.push_back(_mc_particle_map.at(lambdaDaughter_ids.at(i))->Momentum().P());
+    }
+
+    for (size_t i = 0; i < sigmaZeroDaughter_ids.size(); i++)
+    {
+        if (pdg::isPhoton(_mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->PdgCode())) {
+            _mc_sigmazero_photon_pdg     = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->PdgCode();
+            _mc_sigmazero_photon_start_x = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().X();
+            _mc_sigmazero_photon_start_y = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().Y();
+            _mc_sigmazero_photon_start_z = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().Z();
+            _mc_sigmazero_photon_end_x   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndX();
+            _mc_sigmazero_photon_end_y   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndY();
+            _mc_sigmazero_photon_end_z   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndZ();
+            _mc_sigmazero_photon_mom     = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Momentum().P();
+        }
+        if (_mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->PdgCode() == pdg::Lambda) {
+            _mc_sigmazero_lambda_pdg     = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->PdgCode();
+            _mc_sigmazero_lambda_start_x = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().X();
+            _mc_sigmazero_lambda_start_y = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().Y();
+            _mc_sigmazero_lambda_start_z = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Position().Z();
+            _mc_sigmazero_lambda_end_x   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndX();
+            _mc_sigmazero_lambda_end_y   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndY();
+            _mc_sigmazero_lambda_end_z   = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->EndZ();
+            _mc_sigmazero_lambda_mom     = _mc_particle_map.at(sigmaZeroDaughter_ids.at(i))->Momentum().P();
+        }
     }
 }
 
@@ -1395,6 +1451,24 @@ void hyperon::HyperonProduction::clearTreeVariablesMC()
     _mc_decay_end_y.clear();
     _mc_decay_end_z.clear();
     _mc_decay_mom.clear();
+
+    _mc_sigmazero_photon_start_x = bogus::POS;
+    _mc_sigmazero_photon_start_y = bogus::POS;
+    _mc_sigmazero_photon_start_z = bogus::POS;
+    _mc_sigmazero_photon_end_x = bogus::POS;
+    _mc_sigmazero_photon_end_y = bogus::POS;
+    _mc_sigmazero_photon_end_z = bogus::POS;
+    _mc_sigmazero_photon_pdg = bogus::PDG;
+    _mc_sigmazero_photon_mom = bogus::DOUBLE;
+
+    _mc_sigmazero_lambda_start_x = bogus::POS;
+    _mc_sigmazero_lambda_start_y = bogus::POS;
+    _mc_sigmazero_lambda_start_z = bogus::POS;
+    _mc_sigmazero_lambda_end_x = bogus::POS;
+    _mc_sigmazero_lambda_end_y = bogus::POS;
+    _mc_sigmazero_lambda_end_z = bogus::POS;
+    _mc_sigmazero_lambda_pdg = bogus::PDG;
+    _mc_sigmazero_lambda_mom = bogus::DOUBLE;
 
     _mc_ccnc   = "";
     _mc_mode   = "";
