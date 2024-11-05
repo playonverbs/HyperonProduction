@@ -150,6 +150,13 @@ namespace hyperon {
         bool posMatch(TVector3 p1, TVector3 p2, const double _epsilon = 0.0001) {
             return (p1 - p2).Mag() < _epsilon;
         }
+
+        enum struct OriginType {
+            Neutrino = 1,
+            Lambda = 2,
+            Other = 3,
+            SigmaZero = 5,
+        };
     }
 
     namespace pdg {

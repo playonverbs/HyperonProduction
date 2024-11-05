@@ -1650,10 +1650,10 @@ std::vector<int> hyperon::HyperonProduction::getChildIds(const art::Ptr<simb::MC
 
 int hyperon::HyperonProduction::getOrigin(int trackid)
 {
-    if (std::find(primary_ids.begin(), primary_ids.end(), trackid) != primary_ids.end()) return 1;
-    else if (std::find(lambdaDaughter_ids.begin(), lambdaDaughter_ids.end(), trackid) != lambdaDaughter_ids.end()) return 2;
-    else if (std::find(sigmaZeroDaughter_ids.begin(), sigmaZeroDaughter_ids.end(), trackid) != sigmaZeroDaughter_ids.end()) return 5;
-    else return 3;
+    if (std::find(primary_ids.begin(), primary_ids.end(), trackid) != primary_ids.end()) return static_cast<int>(util::OriginType::Neutrino);
+    else if (std::find(lambdaDaughter_ids.begin(), lambdaDaughter_ids.end(), trackid) != lambdaDaughter_ids.end()) return static_cast<int>(util::OriginType::Lambda);
+    else if (std::find(sigmaZeroDaughter_ids.begin(), sigmaZeroDaughter_ids.end(), trackid) != sigmaZeroDaughter_ids.end()) return static_cast<int>(util::OriginType::SigmaZero);
+    else return static_cast<int>(util::OriginType::Other);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
