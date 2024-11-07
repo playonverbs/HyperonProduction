@@ -17,6 +17,9 @@ analyzeEvents:
     HitTruthAssnsLabel:  "gaushitTruthMatch"
     POTSummaryLabel:     "generator"
 
+    RunConnectedness:     true
+    ConnectednessThreshold: 1.4
+
     Debug:                false
     IsData:               false
 }
