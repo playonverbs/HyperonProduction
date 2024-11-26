@@ -51,7 +51,9 @@
 #include "TLorentzVector.h"
 #include "TTree.h"
 #include "TVector3.h"
+#include "TH2D.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -161,6 +163,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void getFlashMatchNuSliceID(art::Event const& evt);
         void getTopologicalScoreNuSliceID(art::Event const& evt);
         void getEventRecoInfo(art::Event const& evt, const int nuSliceID);
+        void getConnectednessIslands(art::Event const& evt, const int nuSliceID);
         void getPFPRecoInfo(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getBogusMCParticleVariables();
@@ -362,6 +365,13 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::map<int, std::vector<int>> _trackID_to_hits;   // Linking trackID -> nTrueHits
         lar_pandora::MCParticleMap _mc_particle_map;        // Linking TrackID -> MCParticle
         lar_pandora::PFParticleMap _pfp_map;                // Linking Self() -> PFParticle
+
+        /////////////////////////////
+        // Internal connectedness maps
+        /////////////////////////////
+        TH2D* _ct_plane0;
+        TH2D* _ct_plane1;
+        TH2D* _ct_plane2;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -434,6 +444,11 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     if (fDebug) std::cout << "Filling Reconstructed Particle Variables..." << std::endl;
     getEventRecoInfo(evt, _flash_match_nu_slice_ID);
     /* getEventRecoInfo(evt, _ct_nu_slice_ID); */
+
+    if (fRunConnectedness) {
+        if (fDebug) std::cout << "Running Connectedness..." << std::endl;
+        getConnectednessIslands(evt, _flash_match_nu_slice_ID);
+    }
 
     fTree->Fill();
 }
@@ -1152,6 +1167,109 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         getShowerVariables(evt, nu_slice_pfp);
 
     } // end nu_slice_pfps loop
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void hyperon::HyperonProduction::getConnectednessIslands(art::Event const& evt, const int nu_SliceID)
+{
+    if ((nu_SliceID < 0) || (_slice_map.find(nu_SliceID) == _slice_map.end()))
+    {
+        if (fDebug)
+            FNLOG("flash match slice not found");
+
+        return;
+    }
+
+    art::ValidHandle<std::vector<recob::Slice>> slice_handle =
+        evt.getValidHandle<std::vector<recob::Slice>>(fPandoraRecoLabel);
+    art::FindManyP<recob::Hit> slice_hit_assoc(slice_handle, evt, fPandoraRecoLabel);
+
+    const std::vector<art::Ptr<recob::Hit>> nu_slice_hits(slice_hit_assoc.at(_slice_map.at(nu_SliceID).key()));
+
+    // find the minimum and maximum values for time tick and wire number
+    auto tick_bounds = std::minmax_element(
+            nu_slice_hits.begin(), nu_slice_hits.end(),
+            [](const art::Ptr<recob::Hit> hit_1, const art::Ptr<recob::Hit> hit_2) {
+                return hit_1->PeakTime() < hit_2->PeakTime();
+            }
+    );
+
+    auto wire_bounds = std::minmax_element(
+            nu_slice_hits.begin(), nu_slice_hits.end(),
+            [](const art::Ptr<recob::Hit> hit_1, const art::Ptr<recob::Hit> hit_2) {
+                return hit_1->WireID().Wire < hit_2->WireID().Wire;
+            }
+    );
+
+    /* if (fDebug) { */
+    /*     std::cout << "(" << (*tick_bounds.first)->PeakTime() << ", " << (*tick_bounds.second)->PeakTime() << ")\n"; */
+    /*     std::cout << "(" << (*wire_bounds.first)->WireID().Wire << ", " << (*wire_bounds.second)->WireID().Wire << ")\n"; */
+    /* } */
+
+    int min_channel = (*wire_bounds.first)->WireID().Wire;
+    int max_channel = (*wire_bounds.second)->WireID().Wire;
+    int n_channels = max_channel - min_channel;
+
+    // TODO: pick correct values for ticks: not PeakTime();
+    int min_tick = (*tick_bounds.first)->PeakTime();
+    int max_tick = (*tick_bounds.second)->PeakTime();
+    double n_ticks = max_tick - min_tick;
+
+    _ct_plane0 = new TH2D("h_channel_v_tick_plane0", "Activity;Channel;Tick",
+            n_channels, min_channel, max_channel,
+            n_ticks, min_tick, max_tick);
+    _ct_plane1 = new TH2D("h_channel_v_tick_plane1", "Activity;Channel;Tick",
+            n_channels, min_channel, max_channel,
+            n_ticks, min_tick, max_tick);
+    _ct_plane2 = new TH2D("h_channel_v_tick_plane2", "Activity;Channel;Tick",
+            n_channels, min_channel, max_channel,
+            n_ticks, min_tick, max_tick);
+
+    for (const art::Ptr<recob::Hit> &hit : nu_slice_hits)
+    {
+        // Apply thresholding
+        if (!alg::ADCThreshold(hit, fConnectednessThreshold))
+            continue;
+
+        switch (hit->WireID().Plane) {
+            case 0u:
+                _ct_plane0->Fill(hit->WireID().Wire, hit->PeakTime());
+                break;
+            case 1u:
+                _ct_plane1->Fill(hit->WireID().Wire, hit->PeakTime());
+                break;
+            case 2u:
+                _ct_plane2->Fill(hit->WireID().Wire, hit->PeakTime());
+                break;
+        }
+        //
+        /* switch (hit->View()) { */
+        /*     case geo::kW: */
+        /*         _ct_plane0->Fill(hit->WireID().Wire, hit->PeakTime()); */
+        /*         break; */
+        /*     case geo::kU: */
+        /*         _ct_plane1->Fill(hit->WireID().Wire, hit->PeakTime()); */
+        /*         break; */
+        /*     case geo::kV: */
+        /*         _ct_plane2->Fill(hit->WireID().Wire, hit->PeakTime()); */
+        /*         break; */
+        /*     default: continue; */
+        /* } */
+
+        /* const float time = hit->PeakTime(); */ // commennted out because we need more than just the peak time from the hit
+        /* const unsigned int wire = hit->WireID().Wire; */
+
+        /* _ct_plane0->Fill(wire, hit->PeakTime()); */
+    }
+
+    /* size_t numIslands = countIslands(_ct_plane0); */
+
+    FNLOG("NOT IMPLEMENTED!!!");
+
+    delete _ct_plane0;
+    delete _ct_plane1;
+    delete _ct_plane2;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////

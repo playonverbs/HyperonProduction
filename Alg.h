@@ -9,6 +9,8 @@
 #include "lardataobj/RecoBase/Track.h"
 #include "ubana/searchingfornues/Selection/CommonDefs/LLR_PID.h"
 
+#include "TH2D.h"
+
 #include <vector>
 
 namespace hyperon {
@@ -184,5 +186,23 @@ namespace hyperon {
 
             return this_llr_pid_score;
         }
+
+        /// Apply a threshold on the Peak ADC of a recob::Hit.
+        bool ADCThreshold(const art::Ptr<recob::Hit> hit, int threshold) {
+            if (hit->PeakAmplitude() < threshold)
+                return false;
+
+            return true;
+        }
+
+        // namespace for connectedness algorithms
+        namespace ct {
+            // take a 2D histoga
+            size_t countIslands(TH2D* hit_map) {
+                /* hit_map->GetBinContent(); */
+                return 0;
+            }
+        }
+
     }
 }
