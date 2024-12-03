@@ -29,7 +29,7 @@ namespace hyperon {
         constexpr double p1_wireangle = -30 * 6.28 / 360.0;
         constexpr double p2_wireangle = 90 * 6.28 / 360.0;
 
-        // TODO: abstract to class to allow for parameterisation. 
+        // TODO: abstract to class to allow for parameterisation.
         constexpr double threshold = 0.175;
 
         double GetMeandEdX(art::Ptr<anab::Calorimetry> calo) {
@@ -171,7 +171,6 @@ namespace hyperon {
                 for (size_t i = 0; i < dedx_values.size(); i++)
                     calo_energy += dedx_values[i] * pitch[i];
 
-                // TODO: do searchingfornues::llr_pid_calculator setup
                 float llr_pid = pid_calc.LLR_many_hits_one_plane(dedx_values,par_values,plane);
                 this_llr_pid += llr_pid;
 

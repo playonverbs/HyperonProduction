@@ -322,7 +322,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _trk_mean_dedx_plane1;
         std::vector<double> _trk_mean_dedx_plane2;
         std::vector<double> _trk_three_plane_dedx;
-        std::vector<double> _trk_llrpid; // TODO: Set this!
+        std::vector<double> _trk_llrpid;
 
         /////////////////////////////
         // Shower Variables
