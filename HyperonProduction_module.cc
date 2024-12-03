@@ -341,6 +341,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _shr_dedx_plane1; // TODO: Set this!
         std::vector<double> _shr_dedx_plane2; // TODO: Set this!
         std::vector<double> _shr_open_angle;
+        std::vector<double> _shr_moliere_avg;
+        std::vector<double> _shr_moliere_rms;
 
         /////////////////////////////
         // Tree
@@ -594,6 +596,8 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("shr_dedx_plane0",    &_shr_dedx_plane0);
     fTree->Branch("shr_dedx_plane1",    &_shr_dedx_plane1);
     fTree->Branch("shr_dedx_plane2",    &_shr_dedx_plane2);
+    fTree->Branch("shr_moliere_avg",    &_shr_moliere_avg);
+    fTree->Branch("shr_moliere_rms",    &_shr_moliere_rms);
 
     // Metadata Tree
 
@@ -1378,6 +1382,9 @@ void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const
     else
         _shr_open_angle.push_back(bogus::ANGLE);
 
+    double medangle, rmsangle = 0.0;
+    alg::GetMoliereRadius(evt, pfparticle, medangle, rmsangle, fPandoraRecoLabel, fShowerLabel, fPandoraRecoLabel);
+
     // TODO: apply SCE correction for start point.
     _shr_start_x.push_back(shower->ShowerStart().X());
     _shr_start_y.push_back(shower->ShowerStart().Y());
@@ -1391,6 +1398,8 @@ void hyperon::HyperonProduction::getShowerVariables(art::Event const& evt, const
     _shr_dedx_plane0.push_back(bogus::DOUBLE);
     _shr_dedx_plane1.push_back(bogus::DOUBLE);
     _shr_dedx_plane2.push_back(bogus::DOUBLE);
+    _shr_moliere_avg.push_back(medangle);
+    _shr_moliere_rms.push_back(rmsangle);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1543,6 +1552,8 @@ void hyperon::HyperonProduction::clearTreeVariablesReco()
     _shr_dedx_plane1.clear();
     _shr_dedx_plane2.clear();
     _shr_open_angle.clear();
+    _shr_moliere_avg.clear();
+    _shr_moliere_rms.clear();
 }
 
 

@@ -7,6 +7,8 @@
 #include "cetlib_except/exception.h"
 #include "lardataobj/AnalysisBase/Calorimetry.h"
 #include "lardataobj/RecoBase/Track.h"
+#include "lardataobj/RecoBase/Shower.h"
+#include "lardataobj/RecoBase/SpacePoint.h"
 #include "ubana/searchingfornues/Selection/CommonDefs/LLR_PID.h"
 
 #include <vector>
@@ -183,6 +185,69 @@ namespace hyperon {
             this_llr_pid_score = atan(this_llr_pid/100.) * 2./3.14159266;
 
             return this_llr_pid_score;
+        }
+
+        // Adapted from searchingfornues
+        void GetMoliereRadius(art::Event const& evt, const art::Ptr<recob::PFParticle> pfp, double& medangle, double& rmsangle, const std::string &productLabel, const std::string &showerLabel, const std::string &spcpntsLabel) {
+            const art::Ptr<recob::Shower> shower =
+                util::GetAssocProduct<recob::Shower>(pfp, evt, productLabel, showerLabel);
+
+            const std::vector<art::Ptr<recob::SpacePoint>> spcpnts =
+                util::GetAssocProductVector<recob::SpacePoint>(pfp, evt, productLabel, spcpntsLabel);
+
+            if (shower.isNull() || spcpnts.size() == 0) {
+                medangle = -999.0;
+                rmsangle = -999.0;
+                return;
+            }
+
+            TVector3 shrdir(shower->Direction().X(),
+                            shower->Direction().Y(),
+                            shower->Direction().Z());
+
+            TVector3 shrvtx(shower->ShowerStart().X(),
+                            shower->ShowerStart().Y(),
+                            shower->ShowerStart().Z());
+
+            std::vector<float> angle_v;
+
+            medangle = 0;
+            rmsangle = 0;
+
+            for (auto &sp: spcpnts) {
+                auto spxyz = sp->XYZ();
+
+                TVector3 sppos(spxyz[0], spxyz[1], spxyz[2]);
+
+                TVector3 sptovtx = sppos - shrvtx;
+
+                if (sptovtx.Mag() == 0) continue;
+
+                float angle = acos( sptovtx.Dot( shrdir ) / (sptovtx.Mag() * shrdir.Mag() ));
+                angle *= (180./3.14);
+
+                angle_v.push_back( angle );
+            }
+
+            if (angle_v.size() == 0) {
+                medangle = std::numeric_limits<double>::max();
+                rmsangle = std::numeric_limits<double>::max();
+                return;
+            }
+
+            for (size_t d = 0; d < angle_v.size(); d++) {
+                medangle += angle_v[d];
+            }
+
+            medangle /= angle_v.size();
+
+            for (size_t d = 0; d < angle_v.size(); d++) {
+                rmsangle += (angle_v[d] - medangle) * (angle_v[d] - medangle);
+            }
+
+            rmsangle /= sqrt( angle_v.size() );
+
+            return;
         }
     }
 }
