@@ -4,18 +4,20 @@ analyzeEvents:
 {
     module_type:        "HyperonProduction"
 
-    PandoraRecoLabel:    "pandoraPatRec:allOutcomes"
-    FlashMatchRecoLabel: "pandora"
-    ShowerLabel:         "pandoraAllOutcomesShowerRedo"
-    TrackLabel:          "pandoraAllOutcomesTrackRedo"
-    CaloLabel:           "pandoraCaliAllOutcomesSCE"
-    GeneratorLabel:      "generator"
-    G4Label:             "largeant"
-    PIDLabel:            "pandoraPIDAllOutcomesSCE"
-    HitLabel:            "gaushit"
-    TrackHitAssnsLabel:  "pandoraPatRec:allOutcomes"
-    HitTruthAssnsLabel:  "gaushitTruthMatch"
-    POTSummaryLabel:     "generator"
+    PandoraRecoLabel:       "pandoraPatRec:allOutcomes"
+    FlashMatchRecoLabel:    "pandora"
+    ShowerLabel:            "pandoraAllOutcomesShowerRedo"
+    TrackLabel:             "pandoraAllOutcomesTrackRedo"
+    CaloLabel:              "pandoraCaliAllOutcomesSCE"
+    GeneratorLabel:         "generator"
+    G4Label:                "largeant"
+    PIDLabel:               "pandoraPIDAllOutcomesSCE"
+    HitLabel:               "gaushit"
+    TrackHitAssnsLabel:     "pandoraPatRec:allOutcomes"
+    HitTruthAssnsLabel:     "gaushitTruthMatch"
+    POTSummaryLabel:        "generator"
+    RunConnectedness:       true
+    ConnectednessThreshold: 1.8
 
     Debug:                false
     IsData:               false

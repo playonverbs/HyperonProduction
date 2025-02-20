@@ -86,35 +86,39 @@ struct hyperon::Config {
     template<typename T, std::size_t SZ>
     using Sequence = fhicl::Sequence<T, SZ>;
 
-    Atom<std::string> fPandoraRecoLabel    { Name("PandoraRecoLabel"),
-                                             Comment("Label for pandoraPatRec reconstruction products") };
-    Atom<std::string> fFlashMatchRecoLabel { Name("FlashMatchRecoLabel"),
-                                             Comment("Label for pandora reconstruction products") };
-    Atom<std::string> fTrackLabel          { Name("TrackLabel"),
-                                             Comment("Label for recob::Track") };
-    Atom<std::string> fShowerLabel         { Name("ShowerLabel"),
-                                             Comment("Label for recob::Shower") };
-    Atom<std::string> fCaloLabel           { Name("CaloLabel"),
-                                             Comment("Label for anab::Calorimetry") };
-    Atom<std::string> fGeneratorLabel      { Name("GeneratorLabel"),
-                                             Comment("Label for simb::MCTruth") };
-    Atom<std::string> fG4Label             { Name("G4Label"),
-                                             Comment("Label for simb::MCParticle") };
-    Atom<std::string> fPIDLabel            { Name("PIDLabel"),
-                                             Comment("Label for anab::ParticleID") };
-    Atom<std::string> fHitLabel            { Name("HitLabel"),
-                                             Comment("Label for recob::Hit") };
-    Atom<std::string> fTrackHitAssnsLabel  { Name("TrackHitAssnsLabel"),
-                                             Comment("Label for Assns between recob::Track and recob::Hit") };
-    Atom<std::string> fHitTruthAssnsLabel  { Name("HitTruthAssnsLabel"),
-                                             Comment("Label for Assns between MCParticle, Hit and BackTrackerHitMatchingData") };
-    Atom<std::string> fPOTSummaryLabel     { Name("POTSummaryLabel"),
-                                             Comment("Label for POT Summary data") };
-    Atom<bool>        fIsData              { Name("IsData"),
-                                             Comment("Flag to indicate if the input is Data") };
-    Atom<bool>        fDebug               { Name("Debug"),
-                                             Comment("Flag to enable debug messages"),
-                                             false };
+    Atom<std::string> fPandoraRecoLabel       { Name("PandoraRecoLabel"),
+                                                Comment("Label for pandoraPatRec reconstruction products") };
+    Atom<std::string> fFlashMatchRecoLabel    { Name("FlashMatchRecoLabel"),
+                                                Comment("Label for pandora reconstruction products") };
+    Atom<std::string> fTrackLabel             { Name("TrackLabel"),
+                                                Comment("Label for recob::Track") };
+    Atom<std::string> fShowerLabel            { Name("ShowerLabel"),
+                                                Comment("Label for recob::Shower") };
+    Atom<std::string> fCaloLabel              { Name("CaloLabel"),
+                                                Comment("Label for anab::Calorimetry") };
+    Atom<std::string> fGeneratorLabel         { Name("GeneratorLabel"),
+                                                Comment("Label for simb::MCTruth") };
+    Atom<std::string> fG4Label                { Name("G4Label"),
+                                                Comment("Label for simb::MCParticle") };
+    Atom<std::string> fPIDLabel               { Name("PIDLabel"),
+                                                Comment("Label for anab::ParticleID") };
+    Atom<std::string> fHitLabel               { Name("HitLabel"),
+                                                Comment("Label for recob::Hit") };
+    Atom<std::string> fTrackHitAssnsLabel     { Name("TrackHitAssnsLabel"),
+                                                Comment("Label for Assns between recob::Track and recob::Hit") };
+    Atom<std::string> fHitTruthAssnsLabel     { Name("HitTruthAssnsLabel"),
+                                                Comment("Label for Assns between MCParticle, Hit and BackTrackerHitMatchingData") };
+    Atom<std::string> fPOTSummaryLabel        { Name("POTSummaryLabel"),
+                                                Comment("Label for POT Summary data") };
+    Atom<bool>        fRunConnectedness       { Name("RunConnectedness"),
+                                                Comment("Flag to indicate if data for the Connectedness Test should be added to the TTree") };
+    Atom<double>      fConnectednessThreshold { Name("ConnectednessThreshold"),
+                                                Comment("Minimum ADC value required for a hit to pass the Connectedness Test threshold") };
+    Atom<bool>        fIsData                 { Name("IsData"),
+                                                Comment("Flag to indicate if the input is Data") };
+    Atom<bool>        fDebug                  { Name("Debug"),
+                                                Comment("Flag to enable debug messages"),
+                                                false };
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -191,6 +195,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::string fTrackHitAssnsLabel;
         std::string fHitTruthAssnsLabel;
         std::string fPOTSummaryLabel;
+        bool fRunConnectedness;
+        double fConnectednessThreshold;
         bool fIsData;
         bool fDebug;
 
@@ -374,6 +380,8 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
     fTrackHitAssnsLabel(config().fTrackHitAssnsLabel()),
     fHitTruthAssnsLabel(config().fHitTruthAssnsLabel()),
     fPOTSummaryLabel(config().fPOTSummaryLabel()),
+    fRunConnectedness(config().fRunConnectedness()),
+    fConnectednessThreshold(config().fConnectednessThreshold()),
     fIsData(config().fIsData()),
     fDebug(config().fDebug())
 {
