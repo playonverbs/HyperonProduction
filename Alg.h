@@ -294,5 +294,31 @@ namespace hyperon {
 
             return;
         }
+
+        // Convert a 3D detector position to a wire-time coordinate
+        // from https://github.com/imawby/ubreco_fork/blob/feature/FlashNeutrinoIDGeoUpdates/ubreco/PandoraEventBuildingFlashID/FlashNeutrinoId_tool.cc#L1925-L1943
+        // XXX: Abandoned currently as geo::WireReadout is not available in this version of LArSoft.
+        /* void position_to_wire(const art::Event &evt, geo::TPCGeo const& tpc, geo::Point_t vec) { */
+        /*     double x = vec.X(); */
+        /*     double Y = vec.Y(); */
+        /*     double Z = vec.Z(); */
+        /*     constexpr double e = std::numeric_limits<double>::epsilon(); */
+
+        /*     auto const fDetectorProperties = art::ServiceHandle<detinfo::DetectorPropertiesService const>()->DataFor(evt); */
+
+        /*     geo::PlaneID const plane_0{0, 0, 0}; // XXX: only for the collection plane? */
+        /*     /1* geo::PlaneID const plane_1{0, 0, 1}; *1/ */
+        /*     /1* geo::PlaneID const plane_2{0, 0, 2}; *1/ */
+
+        /*     vec.SetX(std::clamp(x, e, 2. * tpc.ActiveHalfWidth() - e)); */
+        /*     vec.SetY(std::clamp(y, -tpc.ActiveHalfWidth() + e, tpc.ActiveHalfWidth() - e)); */
+        /*     vec.SetZ(std::clamp(z, e, tpc.ActiveLength() - e)); */
+
+        /*     auto const& channelMapAlg = art::ServiceHandle<geo::WireReadout const>()->Get(); */
+        /*     int wire = channelMapAlg.NearestWireID(vec, plane_0).Wire; */
+        /*     double time = fDetectorProperties.ConvertXToTicks(vec.X(), plane_0) / 4.; */
+
+        /*     std::cout "wire: " << wire << ", time: " << time << "\n"; */
+        /* } */
     }
 }
