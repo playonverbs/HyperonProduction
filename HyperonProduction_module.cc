@@ -54,6 +54,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #define FNLOG(msg)	std::cout << "[" << __PRETTY_FUNCTION__ << "] " << msg << std::endl
 
@@ -79,6 +80,7 @@ namespace hyperon {
 struct hyperon::Config {
     using Name    = fhicl::Name;
     using Comment = fhicl::Comment;
+    using uint    = unsigned int;
 
     template<typename T>
     using Atom = fhicl::Atom<T>;
@@ -112,6 +114,10 @@ struct hyperon::Config {
                                                 Comment("Label for POT Summary data") };
     Atom<bool>        fRunConnectedness       { Name("RunConnectedness"),
                                                 Comment("Flag to indicate if data for the Connectedness Test should be added to the TTree") };
+    Atom<uint>        fConnectednessWindowW   { Name("ConnectednessWindowW"),
+                                                Comment("Size of Connectedness window in the Wire axis") };
+    Atom<uint>        fConnectednessWindowT   { Name("ConnectednessWindowT"),
+                                                Comment("Size of Connectedness window in the Time axis") };
     Atom<double>      fConnectednessThreshold { Name("ConnectednessThreshold"),
                                                 Comment("Minimum ADC value required for a hit to pass the Connectedness Test threshold") };
     Atom<bool>        fIsData                 { Name("IsData"),
@@ -197,6 +203,8 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::string fPOTSummaryLabel;
         bool fRunConnectedness;
         double fConnectednessThreshold;
+        unsigned int fConnectednessWindowW;
+        unsigned int fConnectednessWindowT;
         bool fIsData;
         bool fDebug;
 
@@ -348,6 +356,11 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _shr_dedx_plane2; // TODO: Set this!
         std::vector<double> _shr_open_angle;
 
+        // CT test variables
+        std::vector<std::vector<float>> _ct_test_window_plane0;
+        std::vector<std::vector<float>> _ct_test_window_plane1;
+        std::vector<std::vector<float>> _ct_test_window_plane2;
+
         /////////////////////////////
         // Tree
         /////////////////////////////
@@ -382,6 +395,8 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
     fPOTSummaryLabel(config().fPOTSummaryLabel()),
     fRunConnectedness(config().fRunConnectedness()),
     fConnectednessThreshold(config().fConnectednessThreshold()),
+    fConnectednessWindowW(config().fConnectednessWindowW()),
+    fConnectednessWindowT(config().fConnectednessWindowT()),
     fIsData(config().fIsData()),
     fDebug(config().fDebug())
 {
@@ -602,6 +617,12 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("shr_dedx_plane0",    &_shr_dedx_plane0);
     fTree->Branch("shr_dedx_plane1",    &_shr_dedx_plane1);
     fTree->Branch("shr_dedx_plane2",    &_shr_dedx_plane2);
+
+    if (fRunConnectedness) {
+        fTree->Branch("ct_test_window_plane0", &_ct_test_window_plane0);
+        fTree->Branch("ct_test_window_plane1", &_ct_test_window_plane1);
+        fTree->Branch("ct_test_window_plane2", &_ct_test_window_plane2);
+    }
 
     // Metadata Tree
 
@@ -1152,6 +1173,21 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         getShowerVariables(evt, nu_slice_pfp);
 
     } // end nu_slice_pfps loop
+
+    if (fRunConnectedness) {
+        std::unique_ptr<TVector3> nu_vtx =
+            std::make_unique<TVector3>(_reco_primary_vtx_x, _reco_primary_vtx_y, _reco_primary_vtx_z);
+
+        // take hits from *all* slices
+        const std::vector<art::Ptr<recob::Hit>> all_event_hits =
+            util::GetProductVector<recob::Hit>(evt, fHitLabel);
+
+        alg::BuildCTWindow(all_event_hits, _ct_test_window_plane0,
+                _ct_test_window_plane1, _ct_test_window_plane2,
+                *nu_vtx,
+                fConnectednessWindowW, fConnectednessWindowT,
+                fConnectednessThreshold);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1551,6 +1587,22 @@ void hyperon::HyperonProduction::clearTreeVariablesReco()
     _shr_dedx_plane1.clear();
     _shr_dedx_plane2.clear();
     _shr_open_angle.clear();
+
+    // clear all ct test window vectors:
+    // outer dim = wire
+    // inner dim = time
+    _ct_test_window_plane0.resize(fConnectednessWindowW, {});
+    _ct_test_window_plane1.resize(fConnectednessWindowW, {});
+    _ct_test_window_plane2.resize(fConnectednessWindowW, {});
+
+    for (auto&& row : _ct_test_window_plane0)
+        row.clear();
+
+    for (auto&& row : _ct_test_window_plane1)
+        row.clear();
+
+    for (auto&& row : _ct_test_window_plane2)
+        row.clear();
 }
 
 

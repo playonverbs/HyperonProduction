@@ -18,6 +18,8 @@ analyzeEvents:
     POTSummaryLabel:        "generator"
     RunConnectedness:       true
     ConnectednessThreshold: 1.8
+    ConnectednessWindowW:   100
+    ConnectednessWindowT:   100
 
     Debug:                false
     IsData:               false

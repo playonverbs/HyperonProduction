@@ -13,6 +13,54 @@
 
 namespace hyperon {
     namespace alg {
+        // conversion from 3D detector position to wire-time coordinate
+        // taken from https://github.com/cthorpe123/HyperonProduction/blob/master/Alg/Position_To_Wire.h
+        namespace geometry {
+            constexpr double A_w = 3.33328;
+            constexpr double C_U = 338.140;
+            constexpr double C_V = 2732.53;
+            constexpr double C_Y = 4799.19;
+            constexpr double A_t = 18.2148;
+            constexpr double C_t = 818.351;
+
+            constexpr double cos60 = 0.5;
+            constexpr double sin60 = sqrt(3)/2.0;
+
+            int U_wire(const TVector3 &pos) { return A_w*(-sin60*pos.Y()+cos60*pos.Z())+C_U; }
+            int V_wire(const TVector3 &pos) { return A_w*(sin60*pos.Y()+cos60*pos.Z())+C_V; }
+            int Y_wire(const TVector3 &pos) { return A_w*pos.Z() + C_Y; }
+            int tick(const TVector3 &pos) { return A_t*pos.X() + C_t; }
+
+            double dUdt(const TVector3 &dir) { return A_w/A_t*(-sin60*dir.Y()/dir.X()+cos60*dir.Z()/dir.X()); }
+            double dVdt(const TVector3 &dir) { return A_w/A_t*(sin60*dir.Y()/dir.X()+cos60*dir.Z()/dir.X()); }
+            double dYdt(const TVector3 &dir) { return A_w/A_t*dir.Z()/dir.X(); }
+
+            double AngleU(const TVector3 &dir){
+                bool invert = dir.X() < 0;
+                double angle = (180/3.141)*atan(dUdt(dir));
+                angle -= 2*(angle-45.0);
+                if(invert && angle < 0) angle += 180;
+                if(invert && angle > 0) angle -= 180;
+                return angle;
+            }
+            double AngleV(const TVector3 &dir){
+                bool invert = dir.X() < 0;
+                double angle = (180/3.141)*atan(dVdt(dir));
+                angle -= 2*(angle-45.0);
+                if(invert && angle < 0) angle += 180;
+                if(invert && angle > 0) angle -= 180;
+                return angle;
+            }
+            double AngleY(const TVector3 &dir){
+                bool invert = dir.X() < 0;
+                double angle = (180/3.141)*atan(dYdt(dir));
+                angle -= 2*(angle-45.0);
+                if(invert && angle < 0) angle += 180;
+                if(invert && angle > 0) angle -= 180;
+                return angle;
+            }
+        }
+
         struct Dedx {
             double weight_plane0 = 0.0f;
             double weight_plane1 = 0.0f;
@@ -182,6 +230,69 @@ namespace hyperon {
             this_llr_pid_score = atan(this_llr_pid/100.) * 2./3.14159266;
 
             return this_llr_pid_score;
+        }
+
+        bool ADCThreshold(const art::Ptr<recob::Hit> hit, float min_adc_value) {
+            return hit->PeakAmplitude() >= min_adc_value;
+        }
+
+        void BuildCTWindow(
+                const std::vector<art::Ptr<recob::Hit>> hits,
+                std::vector<std::vector<float>> &window_plane0,
+                std::vector<std::vector<float>> &window_plane1,
+                std::vector<std::vector<float>> &window_plane2,
+                const TVector3 &nu_vtx,
+                const unsigned int window_wires,
+                const unsigned int window_ticks, // XXX: ignored for now
+                float min_adc_value) {
+            const unsigned int nu_wire_u = geometry::U_wire(nu_vtx);
+            const unsigned int nu_wire_v = geometry::V_wire(nu_vtx);
+            const unsigned int nu_wire_y = geometry::Y_wire(nu_vtx);
+            /* const unsigned int nu_time   = geometry::tick(nu_vtx); */
+
+            // Computes the start wire number given the number of wires we're
+            // looking at and the located reconstructed neutrino vertex.
+            const unsigned int start_wire_u = nu_wire_u - ((int)window_wires / 2);
+            const unsigned int start_wire_v = nu_wire_v - ((int)window_wires / 2);
+            const unsigned int start_wire_y = nu_wire_y - ((int)window_wires / 2);
+
+            for (size_t i_hit = 0; i_hit < hits.size(); ++i_hit) {
+                const art::Ptr<recob::Hit> hit = hits.at(i_hit);
+
+                if (!ADCThreshold(hit, min_adc_value))
+                    continue;
+
+                const int wireID = hit->WireID().Wire;
+                const geo::View_t view = hit->View(); // TODO: iterate through enum constants, don't cast to int
+                const float start_tick = hit->PeakTime();
+
+                const unsigned int wire_index_u = wireID - start_wire_u;
+                const unsigned int wire_index_v = wireID - start_wire_v;
+                const unsigned int wire_index_y = wireID - start_wire_y;
+
+                switch (view) {
+                    case geo::kU:
+                        if ((wire_index_u) < window_wires)
+                            window_plane0.at(wire_index_u).push_back(start_tick);
+                        break;
+                    case geo::kV:
+                        if ((wire_index_v) < window_wires)
+                            window_plane1.at(wire_index_v).push_back(start_tick);
+                        break;
+                    case geo::kW:
+                        if ((wire_index_y) < window_wires)
+                            window_plane2.at(wire_index_y).push_back(start_tick);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            window_plane0.shrink_to_fit();
+            window_plane1.shrink_to_fit();
+            window_plane2.shrink_to_fit();
+
+            return;
         }
     }
 }
