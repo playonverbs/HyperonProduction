@@ -631,6 +631,10 @@ void hyperon::HyperonProduction::beginJob()
     fMetaTree = tfs->make<TTree>("MetaTree", "Metadata info tree");
 
     fMetaTree->Branch("POT", &_POT);
+    if (fRunConnectedness) {
+        fMetaTree->Branch("ConnectednessThreshold", &fConnectednessThreshold);
+        fMetaTree->Branch("ConnectednessWindowW", &fConnectednessWindowW);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
