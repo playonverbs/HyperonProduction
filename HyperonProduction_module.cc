@@ -1183,10 +1183,15 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
             std::make_unique<TVector3>(_reco_primary_vtx_x, _reco_primary_vtx_y, _reco_primary_vtx_z);
 
         // take hits from *all* slices
-        const std::vector<art::Ptr<recob::Hit>> all_event_hits =
-            util::GetProductVector<recob::Hit>(evt, fHitLabel);
+        /* const std::vector<art::Ptr<recob::Hit>> all_event_hits = */
+        /*     util::GetProductVector<recob::Hit>(evt, fHitLabel); */
 
-        alg::BuildCTWindow(all_event_hits, _ct_test_window_plane0,
+        // take hits from just the flash-matched neutrino slice
+        const std::vector<art::Ptr<recob::Hit>> nu_slice_hits =
+            util::GetAssocProductVector<recob::Hit>(_slice_map.at(nu_sliceID), evt, fPandoraRecoLabel, fPandoraRecoLabel);
+
+
+        alg::BuildCTWindow(nu_slice_hits, _ct_test_window_plane0,
                 _ct_test_window_plane1, _ct_test_window_plane2,
                 *nu_vtx,
                 fConnectednessWindowW, fConnectednessWindowT,
