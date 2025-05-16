@@ -5,6 +5,7 @@
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Persistency/Common/Ptr.h"
 #include "cetlib_except/exception.h"
+#include "larcore/Geometry/Geometry.h"
 #include "lardataobj/AnalysisBase/Calorimetry.h"
 #include "lardataobj/RecoBase/Track.h"
 #include "ubana/searchingfornues/Selection/CommonDefs/LLR_PID.h"
@@ -13,54 +14,6 @@
 
 namespace hyperon {
     namespace alg {
-        // conversion from 3D detector position to wire-time coordinate
-        // taken from https://github.com/cthorpe123/HyperonProduction/blob/master/Alg/Position_To_Wire.h
-        namespace geometry {
-            constexpr double A_w = 3.33328;
-            constexpr double C_U = 338.140;
-            constexpr double C_V = 2732.53;
-            constexpr double C_Y = 4799.19;
-            constexpr double A_t = 18.2148;
-            constexpr double C_t = 818.351;
-
-            constexpr double cos60 = 0.5;
-            constexpr double sin60 = sqrt(3)/2.0;
-
-            int U_wire(const TVector3 &pos) { return A_w*(-sin60*pos.Y()+cos60*pos.Z())+C_U; }
-            int V_wire(const TVector3 &pos) { return A_w*(sin60*pos.Y()+cos60*pos.Z())+C_V; }
-            int Y_wire(const TVector3 &pos) { return A_w*pos.Z() + C_Y; }
-            int tick(const TVector3 &pos) { return A_t*pos.X() + C_t; }
-
-            double dUdt(const TVector3 &dir) { return A_w/A_t*(-sin60*dir.Y()/dir.X()+cos60*dir.Z()/dir.X()); }
-            double dVdt(const TVector3 &dir) { return A_w/A_t*(sin60*dir.Y()/dir.X()+cos60*dir.Z()/dir.X()); }
-            double dYdt(const TVector3 &dir) { return A_w/A_t*dir.Z()/dir.X(); }
-
-            double AngleU(const TVector3 &dir){
-                bool invert = dir.X() < 0;
-                double angle = (180/3.141)*atan(dUdt(dir));
-                angle -= 2*(angle-45.0);
-                if(invert && angle < 0) angle += 180;
-                if(invert && angle > 0) angle -= 180;
-                return angle;
-            }
-            double AngleV(const TVector3 &dir){
-                bool invert = dir.X() < 0;
-                double angle = (180/3.141)*atan(dVdt(dir));
-                angle -= 2*(angle-45.0);
-                if(invert && angle < 0) angle += 180;
-                if(invert && angle > 0) angle -= 180;
-                return angle;
-            }
-            double AngleY(const TVector3 &dir){
-                bool invert = dir.X() < 0;
-                double angle = (180/3.141)*atan(dYdt(dir));
-                angle -= 2*(angle-45.0);
-                if(invert && angle < 0) angle += 180;
-                if(invert && angle > 0) angle -= 180;
-                return angle;
-            }
-        }
-
         struct Dedx {
             double weight_plane0 = 0.0f;
             double weight_plane1 = 0.0f;
@@ -245,10 +198,11 @@ namespace hyperon {
                 const unsigned int window_wires,
                 const unsigned int window_ticks, // XXX: ignored for now
                 float min_adc_value) {
-            const unsigned int nu_wire_u = geometry::U_wire(nu_vtx);
-            const unsigned int nu_wire_v = geometry::V_wire(nu_vtx);
-            const unsigned int nu_wire_y = geometry::Y_wire(nu_vtx);
-            /* const unsigned int nu_time   = geometry::tick(nu_vtx); */
+            ::art::ServiceHandle<geo::Geometry> geo;
+
+            int nu_wire_u = geo->NearestWire(nu_vtx, 0);
+            int nu_wire_v = geo->NearestWire(nu_vtx, 1);
+            int nu_wire_y = geo->NearestWire(nu_vtx, 2);
 
             // Computes the start wire number given the number of wires we're
             // looking at and the located reconstructed neutrino vertex.
@@ -266,21 +220,21 @@ namespace hyperon {
                 const geo::View_t view = hit->View(); // TODO: iterate through enum constants, don't cast to int
                 const float start_tick = hit->PeakTime();
 
-                const unsigned int wire_index_u = wireID - start_wire_u;
-                const unsigned int wire_index_v = wireID - start_wire_v;
-                const unsigned int wire_index_y = wireID - start_wire_y;
+                const int wire_index_u = (wireID - start_wire_u);
+                const int wire_index_v = (wireID - start_wire_v);
+                const int wire_index_y = (wireID - start_wire_y);
 
                 switch (view) {
                     case geo::kU:
-                        if ((wire_index_u) < window_wires)
+                        if ((wire_index_u < window_wires) && (wire_index_u >= 0))
                             window_plane0.at(wire_index_u).push_back(start_tick);
                         break;
                     case geo::kV:
-                        if ((wire_index_v) < window_wires)
+                        if ((wire_index_v < window_wires) && (wire_index_v >= 0))
                             window_plane1.at(wire_index_v).push_back(start_tick);
                         break;
                     case geo::kW:
-                        if ((wire_index_y) < window_wires)
+                        if ((wire_index_y < window_wires) && (wire_index_y >= 0))
                             window_plane2.at(wire_index_y).push_back(start_tick);
                         break;
                     default:
@@ -294,31 +248,5 @@ namespace hyperon {
 
             return;
         }
-
-        // Convert a 3D detector position to a wire-time coordinate
-        // from https://github.com/imawby/ubreco_fork/blob/feature/FlashNeutrinoIDGeoUpdates/ubreco/PandoraEventBuildingFlashID/FlashNeutrinoId_tool.cc#L1925-L1943
-        // XXX: Abandoned currently as geo::WireReadout is not available in this version of LArSoft.
-        /* void position_to_wire(const art::Event &evt, geo::TPCGeo const& tpc, geo::Point_t vec) { */
-        /*     double x = vec.X(); */
-        /*     double Y = vec.Y(); */
-        /*     double Z = vec.Z(); */
-        /*     constexpr double e = std::numeric_limits<double>::epsilon(); */
-
-        /*     auto const fDetectorProperties = art::ServiceHandle<detinfo::DetectorPropertiesService const>()->DataFor(evt); */
-
-        /*     geo::PlaneID const plane_0{0, 0, 0}; // XXX: only for the collection plane? */
-        /*     /1* geo::PlaneID const plane_1{0, 0, 1}; *1/ */
-        /*     /1* geo::PlaneID const plane_2{0, 0, 2}; *1/ */
-
-        /*     vec.SetX(std::clamp(x, e, 2. * tpc.ActiveHalfWidth() - e)); */
-        /*     vec.SetY(std::clamp(y, -tpc.ActiveHalfWidth() + e, tpc.ActiveHalfWidth() - e)); */
-        /*     vec.SetZ(std::clamp(z, e, tpc.ActiveLength() - e)); */
-
-        /*     auto const& channelMapAlg = art::ServiceHandle<geo::WireReadout const>()->Get(); */
-        /*     int wire = channelMapAlg.NearestWireID(vec, plane_0).Wire; */
-        /*     double time = fDetectorProperties.ConvertXToTicks(vec.X(), plane_0) / 4.; */
-
-        /*     std::cout "wire: " << wire << ", time: " << time << "\n"; */
-        /* } */
     }
 }
