@@ -35,6 +35,7 @@
 #include "lardataobj/RecoBase/Vertex.h"
 #include "lardataobj/RecoBase/Hit.h"
 
+#include "larcore/Geometry/Geometry.h"
 #include "larcoreobj/SummaryData/POTSummary.h"
 
 // larpandora
@@ -357,6 +358,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _shr_open_angle;
 
         // CT test variables
+        std::vector<int> _ct_test_primary_vtx_wires;
         std::vector<std::vector<float>> _ct_test_window_plane0;
         std::vector<std::vector<float>> _ct_test_window_plane1;
         std::vector<std::vector<float>> _ct_test_window_plane2;
@@ -619,6 +621,7 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("shr_dedx_plane2",    &_shr_dedx_plane2);
 
     if (fRunConnectedness) {
+        fTree->Branch("ct_test_primary_vtx_wires", &_ct_test_primary_vtx_wires);
         fTree->Branch("ct_test_window_plane0", &_ct_test_window_plane0);
         fTree->Branch("ct_test_window_plane1", &_ct_test_window_plane1);
         fTree->Branch("ct_test_window_plane2", &_ct_test_window_plane2);
@@ -1190,6 +1193,11 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         const std::vector<art::Ptr<recob::Hit>> nu_slice_hits =
             util::GetAssocProductVector<recob::Hit>(_slice_map.at(nu_sliceID), evt, fPandoraRecoLabel, fPandoraRecoLabel);
 
+        // compute absolute wire coords for the neutrino vertex in 3 planes (0,1,2)
+        ::art::ServiceHandle<geo::Geometry> geo;
+        for (size_t i_p = 0; i_p < 3; ++i_p) {
+            _ct_test_primary_vtx_wires[i_p] = geo->NearestWire(*nu_vtx, i_p);
+        }
 
         alg::BuildCTWindow(nu_slice_hits, _ct_test_window_plane0,
                 _ct_test_window_plane1, _ct_test_window_plane2,
@@ -1600,6 +1608,7 @@ void hyperon::HyperonProduction::clearTreeVariablesReco()
     // clear all ct test window vectors:
     // outer dim = wire
     // inner dim = time
+    _ct_test_primary_vtx_wires.resize(3, -999);
     _ct_test_window_plane0.resize(fConnectednessWindowW, {});
     _ct_test_window_plane1.resize(fConnectednessWindowW, {});
     _ct_test_window_plane2.resize(fConnectednessWindowW, {});
