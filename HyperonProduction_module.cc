@@ -321,6 +321,9 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::vector<double> _pfp_x;
         std::vector<double> _pfp_y;
         std::vector<double> _pfp_z;
+        std::vector<int>    _pfpnplanehits_U;
+        std::vector<int>    _pfpnplanehits_V;
+        std::vector<int>    _pfpnplanehits_Y;
         bool   _reco_primary_vtx_inFV;
         double _reco_primary_vtx_x;
         double _reco_primary_vtx_y;
@@ -586,6 +589,9 @@ void hyperon::HyperonProduction::beginJob()
     fTree->Branch("pfp_x",                 &_pfp_x);
     fTree->Branch("pfp_y",                 &_pfp_y);
     fTree->Branch("pfp_z",                 &_pfp_z);
+    fTree->Branch("pfpnplanehits_U",       &_pfpnplanehits_U);
+    fTree->Branch("pfpnplanehits_V",       &_pfpnplanehits_V);
+    fTree->Branch("pfpnplanehits_Y",       &_pfpnplanehits_Y);
     fTree->Branch("reco_primary_vtx_inFV", &_reco_primary_vtx_inFV);
     fTree->Branch("reco_primary_vtx_x",    &_reco_primary_vtx_x);
     fTree->Branch("reco_primary_vtx_y",    &_reco_primary_vtx_y);
@@ -1340,6 +1346,26 @@ void hyperon::HyperonProduction::getPFPRecoInfo(art::Event const& evt, const art
         _pfp_z.push_back(bogus::DOUBLE);
     }
 
+    // Clusters
+    std::vector<art::Ptr<recob::Cluster>> pfp_clusters =
+        util::GetAssocProductVector<recob::Cluster>(_pfp_map.at(pfparticle.key()), evt, fPandoraRecoLabel, fPandoraRecoLabel);
+    _pfpnplanehits_U.push_back(0);
+    _pfpnplanehits_V.push_back(0);
+    _pfpnplanehits_Y.push_back(0);
+
+    for (auto cluster : pfp_clusters)
+    {
+        unsigned int n_hits = cluster->NHits();
+        if (!n_hits)
+            continue;
+
+        switch (cluster->Plane().Plane) {
+            case 0: _pfpnplanehits_U.back() += n_hits;
+            case 1: _pfpnplanehits_V.back() += n_hits;
+            case 2: _pfpnplanehits_Y.back() += n_hits;
+            default: break;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1647,6 +1673,9 @@ void hyperon::HyperonProduction::clearTreeVariablesReco()
     _pfp_x.clear();
     _pfp_y.clear();
     _pfp_z.clear();
+    _pfpnplanehits_U.clear();
+    _pfpnplanehits_V.clear();
+    _pfpnplanehits_Y.clear();
     _reco_primary_vtx_inFV = false;
     _reco_primary_vtx_x = bogus::POS;
     _reco_primary_vtx_y = bogus::POS;
