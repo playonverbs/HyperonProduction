@@ -53,6 +53,7 @@
 #include "TTree.h"
 #include "TVector3.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <map>
@@ -115,6 +116,9 @@ struct hyperon::Config {
                                                 Comment("Label for POT Summary data") };
     Atom<bool>        fRunConnectedness       { Name("RunConnectedness"),
                                                 Comment("Flag to indicate if data for the Connectedness Test should be added to the TTree") };
+    Atom<bool>        fConnectednessNoShowers { Name("ConnectednessNoShowers"),
+                                                Comment("Flag to indicate if shower-originating hits should be removed from the CT data"),
+                                                false };
     Atom<uint>        fConnectednessWindowW   { Name("ConnectednessWindowW"),
                                                 Comment("Size of Connectedness window in the Wire axis") };
     Atom<uint>        fConnectednessWindowT   { Name("ConnectednessWindowT"),
@@ -168,6 +172,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         void getFlashMatchNuSliceID(art::Event const& evt);
         void getTopologicalScoreNuSliceID(art::Event const& evt);
         void getEventRecoInfo(art::Event const& evt, const int nuSliceID);
+        std::vector<art::Ptr<recob::Hit>> getShowerFilteredHits(art::Event const& evt);
         void getPFPRecoInfo(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getMCParticleVariables(art::Event const& evt, const art::Ptr<recob::PFParticle> &pfparticle);
         void getBogusMCParticleVariables();
@@ -203,6 +208,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::string fHitTruthAssnsLabel;
         std::string fPOTSummaryLabel;
         bool fRunConnectedness;
+        bool fConnectednessNoShowers;
         double fConnectednessThreshold;
         unsigned int fConnectednessWindowW;
         unsigned int fConnectednessWindowT;
@@ -377,6 +383,7 @@ class hyperon::HyperonProduction : public art::EDAnalyzer {
         std::map<int, std::vector<int>> _trackID_to_hits;   // Linking trackID -> nTrueHits
         lar_pandora::MCParticleMap _mc_particle_map;        // Linking TrackID -> MCParticle
         lar_pandora::PFParticleMap _pfp_map;                // Linking Self() -> PFParticle
+        lar_pandora::PFParticleMap _pfp_map_AO;                // Linking Self() -> PFParticle
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -396,6 +403,7 @@ hyperon::HyperonProduction::HyperonProduction(Parameters const& config)
     fHitTruthAssnsLabel(config().fHitTruthAssnsLabel()),
     fPOTSummaryLabel(config().fPOTSummaryLabel()),
     fRunConnectedness(config().fRunConnectedness()),
+    fConnectednessNoShowers(config().fConnectednessNoShowers()),
     fConnectednessThreshold(config().fConnectednessThreshold()),
     fConnectednessWindowW(config().fConnectednessWindowW()),
     fConnectednessWindowT(config().fConnectednessWindowT()),
@@ -1010,7 +1018,7 @@ void hyperon::HyperonProduction::getFlashMatchNuSliceID(art::Event const& evt)
     }
     else if (neutrinoPFPs.size() == 1)
     {
-        std::cout << "hello this is an alert that neutrinoPFPs.size() == 1" << "\n";
+        if (fDebug) std::cout << "hello this is an alert that neutrinoPFPs.size() == 1" << "\n";
         art::FindManyP<recob::Slice> fm_slice_assoc = art::FindManyP<recob::Slice>(fm_pfp_handle, evt, fFlashMatchRecoLabel);
         const std::vector<art::Ptr<recob::Slice>> &fm_slices = fm_slice_assoc.at(neutrinoPFPs[0].key());
 
@@ -1185,10 +1193,6 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
         std::unique_ptr<TVector3> nu_vtx =
             std::make_unique<TVector3>(_reco_primary_vtx_x, _reco_primary_vtx_y, _reco_primary_vtx_z);
 
-        // take hits from *all* slices
-        /* const std::vector<art::Ptr<recob::Hit>> all_event_hits = */
-        /*     util::GetProductVector<recob::Hit>(evt, fHitLabel); */
-
         // take hits from just the flash-matched neutrino slice
         const std::vector<art::Ptr<recob::Hit>> nu_slice_hits =
             util::GetAssocProductVector<recob::Hit>(_slice_map.at(nu_sliceID), evt, fPandoraRecoLabel, fPandoraRecoLabel);
@@ -1199,12 +1203,92 @@ void hyperon::HyperonProduction::getEventRecoInfo(art::Event const& evt, const i
             _ct_test_primary_vtx_wires[i_p] = geo->NearestWire(*nu_vtx, i_p);
         }
 
-        alg::BuildCTWindow(nu_slice_hits, _ct_test_window_plane0,
-                _ct_test_window_plane1, _ct_test_window_plane2,
-                *nu_vtx,
-                fConnectednessWindowW, fConnectednessWindowT,
-                fConnectednessThreshold);
+        // Steps for shower-hit removal
+        // 1. get all the id/keys of the recob::Hit objects that are associated with showers
+        // 2. iterate through the list of neutrino slice hits and check for matches.
+
+        if (fConnectednessNoShowers) {
+            std::vector<art::Ptr<recob::Hit>> shower_hits = getShowerFilteredHits(evt);
+
+            std::vector<art::Ptr<recob::Hit>> filtered_hits = util::FilterProducts(nu_slice_hits, shower_hits);
+
+            alg::BuildCTWindow(filtered_hits, _ct_test_window_plane0,
+                    _ct_test_window_plane1, _ct_test_window_plane2,
+                    *nu_vtx,
+                    fConnectednessWindowW, fConnectednessWindowT,
+                    fConnectednessThreshold);
+        } else {
+            alg::BuildCTWindow(nu_slice_hits, _ct_test_window_plane0,
+                    _ct_test_window_plane1, _ct_test_window_plane2,
+                    *nu_vtx,
+                    fConnectednessWindowW, fConnectednessWindowT,
+                    fConnectednessThreshold);
+        }
     }
+}
+
+std::vector<art::Ptr<recob::Hit>> hyperon::HyperonProduction::getShowerFilteredHits(art::Event const& evt)
+{
+    art::InputTag sliceInputTag_AO("pandoraPatRec", "allOutcomes");
+    art::Handle<std::vector<recob::Slice>> sliceHandle_AO;
+    std::vector<art::Ptr<recob::Slice>> sliceVector_AO;
+
+    if (!evt.getByLabel(sliceInputTag_AO, sliceHandle_AO))
+        throw cet::exception("HyperonProduction") << "No Slice Data Products Found!" << std::endl;
+
+    art::InputTag pfpInputTag_AO("pandoraPatRec", "allOutcomes");
+    art::Handle<std::vector<recob::PFParticle>> pfpHandle_AO;
+    std::vector<art::Ptr<recob::PFParticle>> pfpVector_AO;
+
+    if (!evt.getByLabel(pfpInputTag_AO, pfpHandle_AO))
+        throw cet::exception("HyperonProduction") << "No PFParticle Data Products Found!" << std::endl;
+
+    art::fill_ptr_vector(pfpVector_AO, pfpHandle_AO);
+
+    lar_pandora::LArPandoraHelper::BuildPFParticleMap(pfpVector_AO, _pfp_map_AO);
+
+    art::FindManyP<recob::PFParticle> pfpAssoc_AO =
+        art::FindManyP<recob::PFParticle>(sliceHandle_AO, evt, sliceInputTag_AO);
+    art::fill_ptr_vector(sliceVector_AO, sliceHandle_AO);
+
+    std::vector<art::Ptr<recob::Hit>> shower_hits_AO;
+
+    for (const art::Ptr<recob::Slice> &slice : sliceVector_AO)
+    {
+        const std::vector<art::Ptr<recob::PFParticle>> &nuSlicePFPs_AO(pfpAssoc_AO.at(slice.key()));
+
+        for (const art::Ptr<recob::PFParticle> &pfp_AO : nuSlicePFPs_AO)
+        {
+            if (!lar_pandora::LArPandoraHelper::IsNeutrino(lar_pandora::LArPandoraHelper::GetParentPFParticle(_pfp_map_AO, pfp_AO)))
+                continue;
+
+            // Get PFPMetadata associated with current PFP
+            const art::Ptr<larpandoraobj::PFParticleMetadata> pfp_meta_AO =
+                util::GetAssocProduct<larpandoraobj::PFParticleMetadata>(pfp_AO, evt, pfpInputTag_AO.encode(), pfpInputTag_AO.encode());
+
+            // Skip track-like PFParticles.
+            if (pfp_meta_AO->GetPropertiesMap().find("TrackScore") != pfp_meta_AO->GetPropertiesMap().end())
+            {
+                // Skip track-like PFPs
+                if (pfp_meta_AO->GetPropertiesMap().at("TrackScore") > 0.5)
+                    continue;
+            }
+
+            // Get Clusters associated with current PFP
+            const std::vector<art::Ptr<recob::Cluster>> pfpClusters_AO =
+                util::GetAssocProductVector<recob::Cluster>(pfp_AO, evt, pfpInputTag_AO.encode(), pfpInputTag_AO.encode());
+
+            for (const art::Ptr<recob::Cluster> &cluster_AO : pfpClusters_AO)
+            {
+                const std::vector<art::Ptr<recob::Hit>> clusterHits_AO =
+                    util::GetAssocProductVector<recob::Hit>(cluster_AO, evt, pfpInputTag_AO.encode(), pfpInputTag_AO.encode());
+
+                std::copy(clusterHits_AO.begin(), clusterHits_AO.end(), std::back_inserter(shower_hits_AO));
+            }
+        }
+    }
+
+    return shower_hits_AO;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -7,6 +7,7 @@
 #include "lardataobj/RecoBase/Hit.h"
 #include "lardataobj/AnalysisBase/BackTrackerMatchingData.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -102,6 +103,20 @@ namespace hyperon {
             }
 
             return assocProducts.at(0);
+        }
+
+        template <typename T>
+        std::vector<art::Ptr<T>> FilterProducts(const std::vector<art::Ptr<T>> superset, const std::vector<art::Ptr<T>> subset) {
+            std::vector<art::Ptr<T>> diff = superset;
+
+            for (const art::Ptr<T> &elem : subset) {
+                const auto it = std::find_if(diff.begin(), diff.end(), [&](auto& a){ return elem.key() == a.key(); });
+                if (it != diff.end()) {
+                    diff.erase(it);
+                }
+            }
+
+            return diff;
         }
 
         // Adapted from PeLEE code (searchingfornues/Selection/CommonDefs/BacktrackingFuncs.h)
