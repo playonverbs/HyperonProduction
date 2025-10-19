@@ -1,0 +1,247 @@
+#include "hyperonConfig.fcl"
+#include "pandoramodules_microboone.fcl"
+#include "reco_uboone_mcc9_8_driver_overlay_stage2.fcl"
+//#include "services_microboone.fcl"
+
+process_name: HyperonSelection
+
+
+physics:
+{
+  producers: {
+    pandoraAllOutcomesTrackRedo: @local::microboone_pandoraTrackCreation
+    pandoraAllOutcomesShowerRedo: @local::microboone_pandoraShowerCreation
+
+    pandoraCaloAllOutcomes: {
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: true
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CorrectSCE: false
+         Flip_dQdx: false
+         SpacePointModuleLabel: "pandoraPatRec:allOutcomes"
+         T0ModuleLabel: "mctrutht0"
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseArea: true
+         module_type: "Calorimetry"
+    }
+
+    pandoraCaloAllOutcomesSCE: {
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: true
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CorrectSCE: true
+         Flip_dQdx: false
+         SpacePointModuleLabel: "pandoraPatRec:allOutcomes"
+         T0ModuleLabel: "mctrutht0"
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseArea: true
+         module_type: "Calorimetry"
+    }
+
+    pandoraCaliAllOutcomes: {
+         CalibrationFileName: "calibration_mcc8.4_v1.root"
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: false
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CalorimetryModuleLabel: "pandoraCaloAllOutcomes"
+         Corr_X: [
+            "correction_x_plane0",
+            "correction_x_plane1",
+            "correction_x_plane2"
+         ]
+         Corr_YZ: [
+            "correction_yz_plane0",
+            "correction_yz_plane1",
+            "correction_yz_plane2"
+         ]
+         CorrectSCE: false
+         ELifetimeCorrection: true
+         ForceUnity: true
+         ModBoxA: 9.3e-1
+         ModBoxB: 2.12e-1
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseRecoTrackDir: true
+         module_type: "CalibrationdEdX"
+    }
+
+    pandoraCaliAllOutcomesSCE: {
+         CalibrationFileName: "calibration_mcc8.4_v1.root"
+         CaloAlg: {
+            CalAmpConstants: [
+               5.82554e-4,
+               1.16594e-3
+            ]
+            CalAreaConstants: [
+               4.31e-3,
+               4.02e-3,
+               4.1e-3
+            ]
+            CaloDoLifeTimeCorrection: false
+            CaloLifeTimeForm: 0
+            CaloUseModBox: true
+         }
+         CalorimetryModuleLabel: "pandoraCaloAllOutcomesSCE"
+         Corr_X: [
+            "correction_x_plane0",
+            "correction_x_plane1",
+            "correction_x_plane2"
+         ]
+         Corr_YZ: [
+            "correction_yz_plane0",
+            "correction_yz_plane1",
+            "correction_yz_plane2"
+         ]
+         CorrectSCE: true
+         ELifetimeCorrection: true
+         ForceUnity: true
+         ModBoxA: 9.3e-1
+         ModBoxB: 2.12e-1
+         TrackModuleLabel: "pandoraAllOutcomesTrackRedo"
+         UseRecoTrackDir: true
+         module_type: "CalibrationdEdX"
+    }
+
+    pandoraPIDAllOutcomes: {
+         BraggAlgo: {
+            EndPointFloatLong: 2
+            EndPointFloatShort: -2
+            EndPointFloatStepSize: 5e-2
+            LikelihoodMapsFile: "${UBOONEDATA_DIR}/ParticleID/BraggLikelihoodMaps_mcc8_20190215.root"
+            NHitsToDrop: 1
+         }
+         Chi2PIDAlg: {
+            TemplateFile: "dEdxrestemplates.root"
+            UseMedian: true
+         }
+         DaughterFinderCutDistance: 5
+         DaughterFinderCutFraction: 5e-1
+         FiducialVolume: {
+            X_HIGH: 10
+            X_LOW: 10
+            Y_HIGH: 10
+            Y_LOW: 10
+            Z_HIGH: 10
+            Z_LOW: 10
+         }
+         ProducerLabels: {
+            CaloTrackAssn: "pandoraCaloAllOutcomes"
+            CalorimetryLabel: "pandoraCaloAllOutcomes"
+            HitLabel: "gaushit"
+            HitTrackAssn: "pandoraAllOutcomesTrackRedo"
+            HitTruthAssn: "gaushitTruthMatch"
+            ParticleIdLabel: "pid::particleid"
+            TrackLabel: "pandoraAllOutcomesTrackRedo"
+         }
+         module_type: "ParticleId"
+      }
+
+      pandoraPIDAllOutcomesSCE: {
+         BraggAlgo: {
+            EndPointFloatLong: 2
+            EndPointFloatShort: -2
+            EndPointFloatStepSize: 5e-2
+            LikelihoodMapsFile: "${UBOONEDATA_DIR}/ParticleID/BraggLikelihoodMaps_mcc8_20190215.root"
+            NHitsToDrop: 1
+         }
+         Chi2PIDAlg: {
+            TemplateFile: "dEdxrestemplates.root"
+            UseMedian: true
+         }
+         DaughterFinderCutDistance: 5
+         DaughterFinderCutFraction: 5e-1
+         FiducialVolume: {
+            X_HIGH: 10
+            X_LOW: 10
+            Y_HIGH: 10
+            Y_LOW: 10
+            Z_HIGH: 10
+            Z_LOW: 10
+         }
+         ProducerLabels: {
+            CaloTrackAssn: "pandoraCaloAllOutcomesSCE"
+            CalorimetryLabel: "pandoraCaloAllOutcomesSCE"
+            HitLabel: "gaushit"
+            HitTrackAssn: "pandoraAllOutcomesTrackRedo"
+            HitTruthAssn: "gaushitTruthMatch"
+            ParticleIdLabel: "pid::particleid"
+            TrackLabel: "pandoraAllOutcomesTrackRedo"
+         }
+         module_type: "ParticleId"
+      }
+  }
+
+  analyzers:
+  {
+      ana: @local::analyzeEvents
+  }
+
+  prod: [ pandoraAllOutcomesTrackRedo, pandoraAllOutcomesShowerRedo, pandoraCaloAllOutcomes, pandoraCaliAllOutcomes, pandoraPIDAllOutcomes, pandoraCaloAllOutcomesSCE, pandoraCaliAllOutcomesSCE, pandoraPIDAllOutcomesSCE ]
+
+  # Change root file
+  trigger_paths: [ prod ]
+
+  path0 : [ ana ]
+
+  # Do not change root file
+  end_paths: [ path0 ]
+}
+
+outputs: {}
+
+services.TFileService: { fileName: "analysisOutput.root" }
+services.DetectorClocksService.InheritClockConfig:    false
+services.DetectorClocksService.TriggerOffsetTPC:      -400
+services.DetectorPropertiesService.NumberTimeSamples: 6400
+services.DetectorPropertiesService.ReadOutWindowSize: 6400
+services.SpaceCharge.EnableCalSpatialSCE:             true #enable bkwd (reco -> true)
+services.SpaceCharge.EnableCalEfieldSCE:              true
+services.SpaceCharge.EnableSimSpatialSCE:             true # disable fwd (true -> reco)
+services.SpaceCharge.EnableSimEfieldSCE:              true
+services.SpaceCharge.RepresentationType:              "Voxelized_TH3"
+services.SpaceCharge.CalibrationInputFilename:        "SpaceCharge/SCEoffsets_dataDriven_combined_bkwd_Jan18.root"
+
+physics.producers.pandoraAllOutcomesTrackRedo.PFParticleLabel:  "pandoraPatRec:allOutcomes"
+physics.producers.pandoraAllOutcomesShowerRedo.PFParticleLabel: "pandoraPatRec:allOutcomes"
+physics.producers.pandoraAllOutcomesTrackRedo.UseAllParticles:   true
+physics.producers.pandoraAllOutcomesShowerRedo.UseAllParticles:  true
+
+physics.analyzers.ana.IsData:                         true
+physics.analyzers.ana.Debug:                          true
+
+source.inputCommands: [
+  "keep *_*_*_*",
+  "drop *_*_*_MC*RecoStage2"
+]

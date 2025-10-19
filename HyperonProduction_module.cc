@@ -435,16 +435,16 @@ void hyperon::HyperonProduction::analyze(art::Event const& evt)
     clearTreeVariablesReco();
     clearTreeVariablesMC();
 
+    // Fill those branches!
+    _run    = evt.run();
+    _subrun = evt.subRun();
+    _event  = evt.id().event();
+
     // Need to fill some 'Pandora maps' to assist true->reco matching
     if (fDebug) std::cout << "Filling Pandora Maps..." << std::endl;
     fillPandoraMaps(evt);
     if (fDebug) std::cout << "Filling MCParticle Hit Maps..." << std::endl;
     fillMCParticleHitMaps(evt);
-
-    // Fill those branches!
-    _run    = evt.run();
-    _subrun = evt.subRun();
-    _event  = evt.id().event();
 
     // Fill the MC info for the event
     if (fDebug) std::cout << "Filling MC Event Info..." << std::endl;
@@ -668,12 +668,16 @@ void hyperon::HyperonProduction::endJob()
 
 void hyperon::HyperonProduction::beginSubRun(const art::SubRun& sr)
 {
-    if (fDebug)
-        FNLOG("getting subrun POT info");
+    if (!fIsData) {
+        if (fDebug)
+            FNLOG("getting subrun POT info");
 
-    art::Handle<sumdata::POTSummary> POTHandle;
-    if (sr.getByLabel(fPOTSummaryLabel,POTHandle))
-        _POT += POTHandle->totpot;
+        art::Handle<sumdata::POTSummary> POTHandle;
+        if (sr.getByLabel(fPOTSummaryLabel,POTHandle))
+            _POT += POTHandle->totpot;
+    } else {
+        _POT = 0.0; // XXX: check if Data has no POT available
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -686,20 +690,22 @@ void hyperon::HyperonProduction::endSubRun(const art::SubRun& sr)
 void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
 {
     // MCParticle map
-    art::Handle<std::vector<simb::MCParticle>> mc_particle_handle;
-    std::vector<art::Ptr<simb::MCParticle>> mc_particle_vector;
+    if (!fIsData) {
+        art::Handle<std::vector<simb::MCParticle>> mc_particle_handle;
+        std::vector<art::Ptr<simb::MCParticle>> mc_particle_vector;
 
-    if (!evt.getByLabel(fG4Label, mc_particle_handle))
-        throw cet::exception("HyperonProduction::fillPandoraMaps") << "No MCParticle Data Products Found! :(" << std::endl;
+        if (!evt.getByLabel(fG4Label, mc_particle_handle))
+            throw cet::exception("HyperonProduction::fillPandoraMaps") << "No MCParticle Data Products Found! :(" << std::endl;
 
-    art::fill_ptr_vector(mc_particle_vector, mc_particle_handle);
-    lar_pandora::LArPandoraHelper::BuildMCParticleMap(mc_particle_vector, _mc_particle_map);
+        art::fill_ptr_vector(mc_particle_vector, mc_particle_handle);
+        lar_pandora::LArPandoraHelper::BuildMCParticleMap(mc_particle_vector, _mc_particle_map);
+    }
 
     // PFParticle map
     art::Handle<std::vector<recob::PFParticle>> pfp_handle;
     std::vector<art::Ptr<recob::PFParticle>> pfp_vector;
 
-    if (!evt.getByLabel(fPandoraRecoLabel, pfp_handle))
+    if (!evt.getByLabel(fPandoraRecoLabel, pfp_handle)) // XXX: fails here for EXT/Data
         throw cet::exception("HyperonProduction::fillPandoraMaps") << "No PFParticle Data Products Found! :(" << std::endl;
 
     art::fill_ptr_vector(pfp_vector, pfp_handle);
@@ -723,6 +729,9 @@ void hyperon::HyperonProduction::fillPandoraMaps(art::Event const& evt)
 
 void hyperon::HyperonProduction::fillMCParticleHitMaps(art::Event const& evt)
 {
+    if (fIsData)
+        return;
+
     // Get event hits
     art::Handle<std::vector<recob::Hit>> hit_handle;
     std::vector<art::Ptr<recob::Hit>> hit_vector;
