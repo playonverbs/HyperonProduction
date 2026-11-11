@@ -200,9 +200,16 @@ namespace hyperon {
                 float min_adc_value) {
             ::art::ServiceHandle<geo::Geometry> geo;
 
-            int nu_wire_u = geo->NearestWire(nu_vtx, 0);
-            int nu_wire_v = geo->NearestWire(nu_vtx, 1);
-            int nu_wire_y = geo->NearestWire(nu_vtx, 2);
+            int nu_wire_u, nu_wire_v, nu_wire_y;
+
+            try {
+                nu_wire_u = geo->NearestWire(nu_vtx, 0);
+                nu_wire_v = geo->NearestWire(nu_vtx, 1);
+                nu_wire_y = geo->NearestWire(nu_vtx, 2);
+            } catch (std::exception &e) {
+                std::cerr << "Could not get NearestWire: " << e.what() << std::endl;
+                return;
+            }
 
             // Computes the start wire number given the number of wires we're
             // looking at and the located reconstructed neutrino vertex.
